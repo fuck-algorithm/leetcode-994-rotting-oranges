@@ -1,0 +1,234 @@
+# Implementation Plan
+
+- [x] 1. Set up project structure and dependencies
+  - Initialize Vite + React + TypeScript project
+  - Install dependencies: D3.js, fast-check, vitest
+  - Configure Vite to run on port 40889
+  - Set up basic project structure (src/components, src/algorithm, src/utils)
+  - _Requirements: 6.1_
+
+- [ ] 13. Implement Header component with LeetCode title and GitHub icon
+  - [ ] 13.1 Create Header component
+    - Create `src/components/Header.tsx`
+    - Display title "994. 腐烂的橘子" with LeetCode link (https://leetcode.cn/problems/rotting-oranges/)
+    - Add GitHub icon in top-right corner with repository link
+    - Add hover effects for clickable elements
+    - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2, 10.3_
+  - [ ] 13.2 Write unit tests for Header component
+    - Verify title text and link href
+    - Verify GitHub icon presence and link attributes
+    - _Requirements: 9.1, 9.2, 10.1, 10.2_
+
+- [ ] 14. Enhance CodePanel with debug-like variable display
+  - [ ] 14.1 Update algorithm engine to track variable values
+    - Extend GridState to include variables array
+    - Track fresh, queue size, r, c, nr, nc, minutes at each step
+    - Map variables to their corresponding code line numbers
+    - _Requirements: 11.2, 11.3_
+  - [ ] 14.2 Implement variable inline display in CodePanel
+    - Display variable values after corresponding code lines
+    - Style variable values to look like IDE debug annotations
+    - Add transition animation for value changes
+    - _Requirements: 11.1, 11.2, 11.4, 11.5_
+  - [ ] 14.3 Write property test for variable display consistency
+    - **Property 12: Variable Display Consistency**
+    - **Validates: Requirements 11.2, 11.3, 11.5**
+
+- [ ] 15. Add keyboard shortcuts to Controls component
+  - [ ] 15.1 Implement keyboard event handling
+    - Add global keyboard event listener using useEffect
+    - Map Left Arrow to previous step action
+    - Map Right Arrow to next step action
+    - Map Space to play/pause toggle
+    - Add visual feedback when shortcut is triggered
+    - _Requirements: 12.1, 12.2, 12.3, 12.5_
+  - [ ] 15.2 Update button labels with shortcut hints
+    - Update "Previous" button to show "← 上一步"
+    - Update "Next" button to show "下一步 →"
+    - Update "Play/Pause" button to show "(Space)"
+    - _Requirements: 12.4_
+  - [ ] 15.3 Write property test for keyboard shortcut consistency
+    - **Property 13: Keyboard Shortcut Consistency**
+    - **Validates: Requirements 12.1, 12.2, 12.3**
+
+- [ ] 16. Set up GitHub Actions for automatic deployment
+  - [ ] 16.1 Create GitHub Actions workflow
+    - Create `.github/workflows/deploy.yml`
+    - Configure workflow to trigger on push to main branch
+    - Set up Node.js environment and npm ci
+    - Run build command
+    - Deploy to GitHub Pages using actions/deploy-pages
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
+  - [ ] 16.2 Update Vite configuration for GitHub Pages
+    - Set base path in vite.config.ts for GitHub Pages deployment
+    - _Requirements: 13.4_
+
+- [ ] 17. Integrate Header into App and verify all features
+  - [ ] 17.1 Update App component
+    - Import and add Header component to layout
+    - Ensure responsive layout with Header at top
+    - _Requirements: 9.1, 10.1_
+
+- [ ] 18. Enhance Grid Visualizer with detailed cell information
+  - [ ] 18.1 Update algorithm engine to track cell info
+    - Extend GridState to include cellInfoGrid with infection times
+    - Track currentCell and checkingDirection at each step
+    - Calculate emptyCount, totalCells, infectedThisMinute, bfsWave
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 15.1, 15.3, 15.4_
+  - [ ] 18.2 Implement cell coordinate display
+    - Display (row, col) coordinates within each cell
+    - Style coordinates to be readable but not obtrusive
+    - _Requirements: 14.1_
+  - [ ] 18.3 Implement infection time display
+    - Show infection time (minute number) on rotten oranges
+    - Distinguish initial rotten oranges from infected ones
+    - _Requirements: 14.2_
+  - [ ] 18.4 Implement processing cell highlight
+    - Add distinct border/glow effect for currently processing cell
+    - Show directional indicators when checking adjacent cells
+    - _Requirements: 14.3, 14.4_
+  - [ ] 18.5 Write property test for cell info display consistency
+    - **Property 14: Cell Info Display Consistency**
+    - **Validates: Requirements 14.1, 14.2**
+
+- [ ] 19. Enhance State Panel with detailed statistics
+  - [ ] 19.1 Update State Panel to show cell breakdown
+    - Display total cells, empty count, fresh count, rotten count
+    - Add visual breakdown (e.g., mini bar chart or icons)
+    - _Requirements: 15.1_
+  - [ ] 19.2 Implement infection progress display
+    - Calculate and display infection progress percentage
+    - Add progress bar visualization
+    - _Requirements: 15.2_
+  - [ ] 19.3 Implement per-minute infection count
+    - Display how many oranges were infected in current minute
+    - Show BFS wave/level number
+    - _Requirements: 15.3, 15.4_
+  - [ ] 19.4 Write property test for enhanced statistics consistency
+    - **Property 15: Enhanced Statistics Consistency**
+    - **Validates: Requirements 15.2, 15.3, 15.4**
+
+- [ ] 20. Enhance Queue Panel with detailed information
+  - [ ] 20.1 Update Queue Panel to show coordinates clearly
+    - Display each cell's (row, col) in queue elements
+    - Add queue size indicator
+    - _Requirements: 16.1, 16.4_
+  - [ ] 20.2 Implement queue element highlighting
+    - Highlight front element being dequeued
+    - Visually distinguish newly added elements
+    - _Requirements: 16.2, 16.3_
+
+- [ ] 21. Final Checkpoint - Verify build and tests
+  - Run `npm run build` to ensure no compilation errors
+  - Run `npm run lint` to ensure no linter errors
+  - Run `npm test` to ensure all tests pass
+  - Verify application works correctly in browser
+
+- [x] 2. Implement core algorithm engine
+  - [x] 2.1 Create data types and interfaces
+    - Define CellState enum, Cell interface, GridState interface, AlgorithmResult interface
+    - _Requirements: 1.1_
+  - [x] 2.2 Implement BFS algorithm step generator
+    - Implement `generateSteps()` function that produces all grid states
+    - Implement `getAdjacentFresh()` helper function
+    - Track queue state and algorithm phase at each step
+    - Generate code line highlights for each step
+    - Handle edge cases: empty grid, no fresh oranges, unreachable oranges
+    - _Requirements: 3.1, 3.3, 3.4, 7.2, 8.1_
+  - [x] 2.3 Write property test for BFS adjacent cell identification
+    - **Property 5: BFS Adjacent Cell Identification**
+    - **Validates: Requirements 3.1**
+  - [x] 2.4 Write property test for algorithm result correctness
+    - **Property 6: Algorithm Result Correctness**
+    - **Validates: Requirements 3.4**
+
+- [x] 3. Implement grid parser utilities
+  - [x] 3.1 Create grid parser and serializer
+    - Implement `parseGrid()` function to parse string input to grid
+    - Implement `serializeGrid()` function to convert grid to string
+    - Implement `validateGrid()` function for input validation
+    - _Requirements: 4.1, 4.2_
+  - [x] 3.2 Write property test for grid parsing round trip
+    - **Property 7: Grid Parsing Round Trip**
+    - **Validates: Requirements 4.1**
+  - [x] 3.3 Write property test for invalid input rejection
+    - **Property 8: Invalid Input Rejection**
+    - **Validates: Requirements 4.2**
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Implement Grid Visualizer component
+  - [x] 5.1 Create D3.js grid renderer
+    - Create GridVisualizer React component
+    - Implement SVG grid rendering with D3.js
+    - Apply colors based on cell state (gray/orange/brown)
+    - Add transition animations for state changes
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 3.2_
+  - [x] 5.2 Write property test for cell rendering consistency
+    - **Property 1: Cell Rendering Consistency**
+    - **Validates: Requirements 1.2, 1.3, 1.4**
+
+- [x] 6. Implement Controls component
+  - [x] 6.1 Create playback control buttons
+    - Implement play, pause, next, previous, reset buttons
+    - Add speed control slider
+    - Implement animation timer logic with useEffect
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [x] 6.2 Write property tests for step navigation
+    - **Property 2: Step Navigation Forward**
+    - **Property 3: Step Navigation Backward**
+    - **Property 4: Reset Returns to Initial State**
+    - **Validates: Requirements 2.3, 2.4, 2.5**
+
+- [x] 7. Implement State Panel component
+  - [x] 7.1 Create state display panel
+    - Display current minute, fresh count, rotten count
+    - Display final result when algorithm completes
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - [x] 7.2 Write property test for state display consistency
+    - **Property 9: State Display Consistency**
+    - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
+
+- [x] 8. Implement Input Panel component
+  - [x] 8.1 Create grid input interface
+    - Create text input for custom grid configuration
+    - Add preset example buttons (3 examples from problem description)
+    - Implement input validation and error display
+    - _Requirements: 4.1, 4.2, 4.3_
+
+- [x] 9. Implement Code Panel component
+  - [x] 9.1 Create Java code display with syntax highlighting
+    - Create CodePanel React component
+    - Display the complete BFS Java solution code
+    - Implement syntax highlighting using CSS or a lightweight library
+    - _Requirements: 7.1_
+  - [x] 9.2 Implement code line highlighting based on algorithm phase
+    - Highlight initialization code during init phase (lines 8-17)
+    - Highlight BFS loop during processing (lines 22-23)
+    - Highlight adjacent check code (lines 28-35)
+    - Highlight infection code (lines 33-36)
+    - _Requirements: 7.2, 7.3, 7.4, 7.5_
+  - [x] 9.3 Write property test for code highlight consistency
+    - **Property 10: Code Highlight Consistency**
+    - **Validates: Requirements 7.2, 7.3, 7.4, 7.5**
+
+- [x] 10. Implement Queue Panel component
+  - [x] 10.1 Create BFS queue visualization
+    - Create QueuePanel React component
+    - Display queue contents as a horizontal list of cell coordinates
+    - Add visual indicators for queue operations (add/remove)
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [x] 10.2 Write property test for queue state consistency
+    - **Property 11: Queue State Consistency**
+    - **Validates: Requirements 8.1**
+
+- [x] 11. Integrate all components in App
+  - [x] 11.1 Wire up App component
+    - Integrate all components in main App
+    - Implement state management with useState/useReducer
+    - Ensure responsive single-screen layout with grid layout
+    - _Requirements: 6.2, 6.3_
+
+- [x] 12. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
