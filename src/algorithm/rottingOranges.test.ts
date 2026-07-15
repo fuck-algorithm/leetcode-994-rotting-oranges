@@ -146,3 +146,40 @@ describe('Known Examples', () => {
     expect(lastStep.phase).toBe(AlgorithmPhase.COMPLETE);
   });
 });
+
+describe('Call Stack & Scope Data', () => {
+  it('每个步骤都包含非空 callStack 与 scope', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    expect(result.steps.length).toBeGreaterThan(0);
+    for (const step of result.steps) {
+      expect(step.callStack).toBeDefined();
+      expect(step.callStack!.length).toBeGreaterThan(0);
+      expect(step.scope).toBeDefined();
+      expect(step.callStack![0].id).toBe('method');
+      expect(step.callStack![0].label).toContain('orangesRotting');
+      step.callStack!.forEach((frame, i) => {
+        expect(frame.depth).toBe(i);
+      });
+    }
+  });
+
+  it('BFS 阶段步骤的栈深度 >= 2（method + bfs-loop）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    const bfsSteps = result.steps.filter(s => s.phase === AlgorithmPhase.BFS_LOOP);
+    expect(bfsSteps.length).toBeGreaterThan(0);
+    for (const step of bfsSteps) {
+      expect(step.callStack!.length).toBeGreaterThanOrEqual(2);
+      expect(step.callStack!.some(f => f.id === 'bfs-loop')).toBe(true);
+    }
+  });
+
+  it('COMPLETE 阶段栈包含 return 帧', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    const lastStep = result.steps[result.steps.length - 1];
+    expect(lastStep.phase).toBe(AlgorithmPhase.COMPLETE);
+    expect(lastStep.callStack!.some(f => f.id === 'return')).toBe(true);
+  });
+});
