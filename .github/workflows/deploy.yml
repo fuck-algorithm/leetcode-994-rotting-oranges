@@ -2,7 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # 监听所有分支的 push，每次代码变更都触发部署
+    branches-ignore:
+      - 'gh-pages'
   workflow_dispatch:
 
 permissions:
