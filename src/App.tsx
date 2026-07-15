@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useAutoFitGrid } from './hooks/useAutoFitGrid';
 import { Header } from './components/Header';
 import { GridVisualizer } from './components/GridVisualizer';
 import { Controls } from './components/Controls';
@@ -57,6 +58,17 @@ function App() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(800);
+
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const gridDims = grid[0] ? { rows: grid.length, cols: grid[0].length } : { rows: 0, cols: 0 };
+  const { cellSize: autoCellSize } = useAutoFitGrid({
+    containerRef: gridContainerRef,
+    rows: gridDims.rows,
+    cols: gridDims.cols,
+    maxCellSize: 65,
+    minCellSize: 18,
+    padding: 16,
+  });
 
   useEffect(() => {
     const newResult = generateSteps(grid);
@@ -119,19 +131,24 @@ function App() {
         </div>
 
         {/* Center: Grid Visualizer */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center',
-          background: '#111827',
-          borderRadius: '8px',
-          padding: '16px',
-          minHeight: 0,
-        }}>
-          <GridVisualizer 
-            gridState={currentState} 
-            cellSize={65}
+        <div
+          ref={gridContainerRef}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: '#111827',
+            borderRadius: '8px',
+            padding: '16px',
+            minHeight: 0,
+            minWidth: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <GridVisualizer
+            gridState={currentState}
+            cellSize={autoCellSize}
             showCoordinates={true}
             showInfectionTime={true}
           />
