@@ -13,6 +13,7 @@
 - feature 分支半成品会临时覆盖正式 Pages 站点 → 缓解：用户已明确选择此方案，接受临时覆盖；main 分支 push 后自动恢复正式版本
 - 并发部署冲突 → 缓解：现有 `concurrency.group: "pages"` + `cancel-in-progress: false` 会串行化部署，避免冲突
 - `workflow_dispatch` 手动触发保留 → 缓解：触发条件中保留 `workflow_dispatch`，方便手动重跑
+- **github-pages environment 的分支保护规则默认只允许 main 分支部署** → 缓解：Task 1 Step 2 删除 environment 的自定义分支策略，使所有分支可部署（custom_branch_policies 模式下空列表 = 全部允许）。**这是调研时通过首次部署失败发现的隐藏依赖，必须执行否则 feature 分支部署会被环境保护规则拒绝**
 
 ---
 
