@@ -1,8 +1,11 @@
-import { VariableValue } from '../algorithm/types';
+import { VariableValue, CallStackFrame, ScopeSnapshot } from '../algorithm/types';
+import { CallStackPanel } from './CallStackPanel';
 
 interface CodePanelProps {
   highlightedLines: number[];
   variables?: VariableValue[];
+  callStack?: CallStackFrame[];
+  scope?: ScopeSnapshot;
 }
 
 const JAVA_CODE = `class Solution {
@@ -69,7 +72,7 @@ const COLORS = {
   default: '#d4d4d4',      // 默认白色
 };
 
-export function CodePanel({ highlightedLines, variables = [] }: CodePanelProps) {
+export function CodePanel({ highlightedLines, variables = [], callStack, scope }: CodePanelProps) {
   // 创建变量行映射
   const variablesByLine: Record<number, VariableValue[]> = {};
   for (const v of variables) {
@@ -197,6 +200,41 @@ export function CodePanel({ highlightedLines, variables = [] }: CodePanelProps) 
           );
         })}
       </pre>
+
+      {/* ===== Debug 模式：调用栈 + 作用域观察 ===== */}
+      {callStack && callStack.length > 0 && (
+        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <CallStackPanel callStack={callStack} />
+
+          {scope && (
+            <div style={{
+              background: '#252526',
+              borderRadius: '6px',
+              padding: '8px',
+              border: '1px solid #333',
+            }}>
+              <h4 style={{ margin: '0 0 6px 0', color: '#60a5fa', fontSize: '12px' }}>🔍 变量观察</h4>
+              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>成员变量</div>
+              <div style={{ marginBottom: '8px' }}>
+                {scope.members.length === 0 ? (
+                  <span style={{ color: '#6b7280', fontSize: '10px' }}>(无)</span>
+                ) : (
+                  <VariableGrid variables={scope.members} />
+                )}
+              </div>
+              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>局部变量</div>
+              <div>
+                {scope.locals.length === 0 ? (
+                  <span style={{ color: '#6b7280', fontSize: '10px' }}>(无)</span>
+                ) : (
+                  <VariableGrid variables={scope.locals} />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <style>{`
         @keyframes varPulse {
           0% { opacity: 0; transform: translateX(-10px); }
@@ -284,4 +322,27 @@ function tokenizeLine(code: string): React.ReactNode {
   return tokens.map((token, i) => (
     <span key={i} style={{ color: token.color }}>{token.text}</span>
   ));
+}
+
+function VariableGrid({ variables }: { variables: VariableValue[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      {variables.map(v => (
+        <div key={v.name} style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '8px',
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          padding: '2px 4px',
+          background: '#1a1a1a',
+          borderRadius: '3px',
+        }}>
+          <span style={{ color: '#9cdcfe' }}>{v.name}</span>
+          <span style={{ color: '#888' }}>=</span>
+          <span style={{ color: '#b5cea8', fontWeight: 600 }}>{v.value}</span>
+        </div>
+      ))}
+    </div>
+  );
 }

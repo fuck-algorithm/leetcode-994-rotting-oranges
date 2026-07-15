@@ -124,9 +124,11 @@ function App() {
       }}>
         {/* Left: Code Panel */}
         <div style={{ overflow: 'auto', minHeight: 0 }}>
-          <CodePanel 
-            highlightedLines={currentState.highlightedLines} 
+          <CodePanel
+            highlightedLines={currentState.highlightedLines}
             variables={currentState.variables}
+            callStack={currentState.callStack}
+            scope={currentState.scope}
           />
         </div>
 
