@@ -117,8 +117,8 @@ function App() {
       {/* Main Content */}
       <main style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 2fr 1fr',
-        gap: '10px',
+        gridTemplateColumns: '1fr 1.6fr 0.85fr',
+        gap: '6px',
         minHeight: 0,
         overflow: 'hidden',
       }}>
@@ -142,10 +142,11 @@ function App() {
             alignItems: 'center',
             background: '#111827',
             borderRadius: '8px',
-            padding: '16px',
+            padding: '8px',
             minHeight: 0,
-            minWidth: 0,
+            minWidth: 300,
             overflow: 'hidden',
+            cursor: 'grab',
           }}
         >
           <GridVisualizer
