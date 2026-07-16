@@ -45,6 +45,9 @@ export function GridVisualizer({
       .attr('height', '100%');
     svg.selectAll('*').remove();
 
+    // 根容器 <g>：所有单元格挂在此，zoom 作用于它
+    const root = svg.append('g');
+
     const cellData = grid.flatMap((row, r) =>
       row.map((state, c) => {
         const info = cellInfoGrid?.[r]?.[c];
@@ -52,7 +55,7 @@ export function GridVisualizer({
       })
     );
 
-    const cells = svg.selectAll('g')
+    const cells = root.selectAll('g')
       .data(cellData)
       .enter()
       .append('g')
@@ -113,6 +116,14 @@ export function GridVisualizer({
         .attr('font-size', Math.max(7, cellSize * 0.13))
         .attr('fill', '#ef4444')
         .text('初始');
+
+    // d3.zoom：滚轮缩放 + 拖拽平移，作用于 root <g>
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 4])
+      .on('zoom', (event) => {
+        root.attr('transform', event.transform.toString());
+      });
+    svg.call(zoom);
   }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime]);
 
   return (
