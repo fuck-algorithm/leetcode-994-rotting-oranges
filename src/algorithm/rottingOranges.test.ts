@@ -192,31 +192,42 @@ describe('演示可读性：step 粒度合理性', () => {
     expect(initSteps.length).toBeLessThanOrEqual(5);
   });
 
-  it('示例1：总 step 数显著减少（原 172 → 应 < 50）', () => {
+  it('示例1：总 step 数显著减少（原 172 → 应 < 30，逐分钟粒度）', () => {
     const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
     const result = generateSteps(grid);
-    expect(result.steps.length).toBeLessThan(50);
+    expect(result.steps.length).toBeLessThan(30);
   });
 
-  it('示例2：check_adjacent 阶段 step 大幅减少（原 102 → 应 < 30）', () => {
+  it('示例2：总 step 数显著减少（原 189 → 应 < 30，逐分钟粒度）', () => {
     const grid: CellState[][] = [[2, 1, 1], [0, 1, 1], [1, 0, 1]];
     const result = generateSteps(grid);
-    const checkSteps = result.steps.filter(s => s.phase === AlgorithmPhase.CHECK_ADJACENT);
-    expect(checkSteps.length).toBeLessThan(30);
+    expect(result.steps.length).toBeLessThan(30);
   });
 
-  it('每个单格感染 step 都带 waveColor 和 targetCell（视觉强相关）', () => {
+  it('每个 INFECT（整波扩散）step 都带 waveColor 和 targetCell（视觉强相关）', () => {
     const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
     const result = generateSteps(grid);
-    // 单格感染 step：description 以"源"开头（"源 [r,c] 检查方向 → 感染"），区别于"分钟结束"整波总结
-    const infectSteps = result.steps.filter(
-      s => s.phase === AlgorithmPhase.INFECT && s.description.startsWith('源')
-    );
+    const infectSteps = result.steps.filter(s => s.phase === AlgorithmPhase.INFECT);
     expect(infectSteps.length).toBeGreaterThan(0);
     for (const s of infectSteps) {
       expect(s.waveColor).toBeDefined();
       expect(s.targetCell).toBeDefined();
+      expect(s.newlyRotten.length).toBeGreaterThan(0);
     }
+  });
+
+  it('BFS 每分钟最多 2 个 step（开始 + 扩散完成），粒度逐分钟', () => {
+    // 用 10×10 极端网格（99新鲜1腐烂，需17波扩散）验证大网格也保持逐分钟粒度
+    const grid: CellState[][] = Array.from({ length: 10 }, (_, r) =>
+      Array.from({ length: 10 }, (_, c) => {
+        if (r === 0 && c === 0) return CellState.ROTTEN;
+        if (r === 9 && c === 9) return CellState.EMPTY;
+        return CellState.FRESH;
+      })
+    );
+    const result = generateSteps(grid);
+    // 极端网格 17 波 × 2 step + 初始化 ≈ 40；远小于旧的逐行 ~189
+    expect(result.steps.length).toBeLessThan(50);
   });
 
   it('description 是叙事句（含中文标点或箭头，非纯代码行）', () => {

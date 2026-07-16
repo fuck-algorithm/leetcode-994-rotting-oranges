@@ -194,6 +194,11 @@ function getWaveColor(minute: number): string {
   return WAVE_COLORS[minute % WAVE_COLORS.length];
 }
 
+/** 格式化单元格坐标为 [r,c] 字符串，用于叙事 description */
+function formatCell(cell: Cell): string {
+  return `[${cell.row},${cell.col}]`;
+}
+
 export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   const steps: GridState[] = [];
   const grid = cloneGrid(initialGrid);
@@ -305,7 +310,7 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   }
 
 
-  // ========== 第三阶段：BFS 主循环（逐分钟扩散，每步有画布变化） ==========
+  // ========== 第三阶段：BFS 主循环（逐分钟粒度：每波 1-2 个 step，整波同时扩散） ==========
 
   let minute = 0;
 
@@ -317,7 +322,7 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
     steps.push(createStep(
       grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
       0, minute, [], [...queue], CODE_LINES.COMMENT_BFS, AlgorithmPhase.BFS_LOOP,
-      `开始 BFS 广度优先搜索。原理：每分钟，队列里所有腐烂橘子同时向四个方向扩散感染。第 ${minute} 分钟色环=${waveColor}`,
+      `开始 BFS 广度优先搜索。原理：每"分钟"，队列里所有腐烂橘子同时向四个方向扩散，感染相邻的新鲜橘子。同色环 = 同一波（同一分钟）被感染。第 0 分钟色环=${waveColor}`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
@@ -331,137 +336,81 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   while (queue.length > 0 && fresh > 0) {
     const size = queue.length;
     const waveColor = getWaveColor(minute);
-    const newlyRotten: Cell[] = [];
+    // 这一分钟开始时，队列里前 size 个就是本轮的源橘子
+    const waveSources: Cell[] = queue.slice(0, size);
 
-    // Step: 第 minute 分钟开始 — 告诉用户这一波要处理几个源橘子
+    // Step 1: 第 minute 分钟开始 —— 展示这一波的源橘子（蓝色高亮第一个）
     {
+      const firstSource = waveSources[0];
       const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, size });
       const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
       steps.push(createStep(
         grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
         0, minute, [], [...queue], CODE_LINES.GET_SIZE, AlgorithmPhase.BFS_LOOP,
-        `第 ${minute} 分钟开始：队列里有 ${size} 个腐烂橘子将同时向四周扩散（同色环=${waveColor} 的格子属于这一波）。剩余新鲜橘子 ${fresh}`,
+        `第 ${minute} 分钟开始：队列里有 ${size} 个腐烂橘子（${waveColor} 色环）将同时向四周扩散感染。它们是：${waveSources.map(c => `[${c.row},${c.col}]`).join(' ')}。剩余新鲜橘子 ${fresh}`,
         variables,
         buildCallStack([
           { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
           { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length, size }) },
+          { id: 'iterate-cell', label: `本波 ${size} 个源橘子`, line: CODE_LINES.FOR_I[0], variables: createVariables({ size }) },
         ]),
         buildScope(members, variables),
-        undefined, undefined, waveColor
+        firstSource, undefined, waveColor
       ));
     }
 
-    // 处理当前层的每个腐烂橘子
+    // 一次性处理这一波所有源橘子的所有方向 —— 收集全部感染（模拟"同时扩散"）
+    const newlyRotten: Cell[] = [];
+    const infectionPairs: { from: Cell; to: Cell; dir: Direction }[] = [];
+    // 先记录本轮要处理的源橘子，再逐个出队（与原算法 queue 语义一致）
     for (let i = 0; i < size; i++) {
       const cell = queue.shift()!;
-      const cellVars = createVariables({ i, size, currentR: cell.row, currentC: cell.col });
-
-      // Step: 取出当前源橘子（合并原 for/出队/取坐标 3 步）
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.POLL, AlgorithmPhase.BFS_LOOP,
-          `取出第 ${i + 1}/${size} 个源橘子 [${cell.row},${cell.col}]（蓝色边框高亮）。它将检查上下左右四个相邻格子`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: cellVars },
-          ]),
-          buildScope(members, variables),
-          cell, undefined, waveColor
-        ));
-      }
-
-      // 检查四个方向 —— 命中新鲜橘子才推感染 step，否则合并为 1 个"检查无感染"step
-      let infectedAny = false;
-
       for (let d = 0; d < DIRECTIONS.length; d++) {
         const [dr, dc] = DIRECTIONS[d];
         const dirName = DIRECTION_NAMES[d];
-        const dirChinese = dirName === 'up' ? '上' : dirName === 'down' ? '下' : dirName === 'left' ? '左' : '右';
         const nr = cell.row + dr;
         const nc = cell.col + dc;
         const inBounds = nr >= 0 && nr < M && nc >= 0 && nc < N;
-        const isFresh = inBounds && grid[nr][nc] === CellState.FRESH;
-
-        if (!isFresh) {
-          // 跳过：越界或非新鲜 —— 不推 step（避免零视觉变化的 step）
-          continue;
+        // 关键：只感染"此刻仍是新鲜"的格子（避免同波内重复感染，模拟同时扩散）
+        if (inBounds && grid[nr][nc] === CellState.FRESH) {
+          grid[nr][nc] = CellState.ROTTEN;
+          cellInfoGrid[nr][nc].state = CellState.ROTTEN;
+          cellInfoGrid[nr][nc].infectionTime = minute + 1;
+          fresh--;
+          currentRotten++;
+          queue.push({ row: nr, col: nc });
+          newlyRotten.push({ row: nr, col: nc });
+          infectionPairs.push({ from: cell, to: { row: nr, col: nc }, dir: dirName });
         }
-
-        // 命中新鲜橘子 —— 推 1 个感染 step（合并原 检查方向/算nr/算nc/设腐烂/fresh--/入队 6 步）
-        // Step: 检查方向并感染
-        grid[nr][nc] = CellState.ROTTEN;
-        cellInfoGrid[nr][nc].state = CellState.ROTTEN;
-        cellInfoGrid[nr][nc].infectionTime = minute + 1;
-        fresh--;
-        currentRotten++;
-        queue.push({ row: nr, col: nc });
-        newlyRotten.push({ row: nr, col: nc });
-        infectedAny = true;
-
-        {
-          const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col, nr, nc });
-          const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-          steps.push(createStep(
-            grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-            0, minute, [...newlyRotten], [...queue], CODE_LINES.SET_ROTTEN, AlgorithmPhase.INFECT,
-            `源 [${cell.row},${cell.col}] 检查${dirChinese}方向 → 相邻 [${nr},${nc}] 是新鲜橘子，感染！橘子变褐（${waveColor} 色环）、fresh=${fresh}、新感染橘子入队`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-              { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-              { id: 'infect', label: `感染 [${nr},${nc}]`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ nr, nc, fresh }) },
-            ]),
-            buildScope(members, variables),
-            cell, dirName, waveColor, { row: nr, col: nc }
-          ));
-        }
-      }
-
-      // 如果该源橘子四个方向都没感染到任何橘子，推 1 个说明 step（让用户知道这个源橘子"空转"了）
-      if (!infectedAny) {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.FOR_DIR, AlgorithmPhase.CHECK_ADJACENT,
-          `源 [${cell.row},${cell.col}] 检查四个方向：相邻格子都已腐烂或为空，本分钟未感染新橘子`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ currentR: cell.row, currentC: cell.col }) },
-            { id: 'check-direction', label: `检查四方向（无命中）`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col }) },
-          ]),
-          buildScope(members, variables),
-          cell, undefined, waveColor
-        ));
       }
     }
 
-    // 第 minute 分钟结束 —— 推 1 个分钟总结 step（仅当有感染发生）
+    // Step 2: 第 minute 分钟扩散完成 —— 整波感染同时呈现在画布上
     if (newlyRotten.length > 0) {
+      const lastInfected = newlyRotten[newlyRotten.length - 1];
+      const lastFrom = infectionPairs[infectionPairs.length - 1].from;
+      const dirChinese = infectionPairs[infectionPairs.length - 1].dir === 'up' ? '上'
+        : infectionPairs[infectionPairs.length - 1].dir === 'down' ? '下'
+        : infectionPairs[infectionPairs.length - 1].dir === 'left' ? '左' : '右';
       minute++;
-      const newWaveColor = getWaveColor(minute - 1);
-      const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
+      const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, size });
       const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
       steps.push(createStep(
         grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-        newlyRotten.length, minute - 1, [...newlyRotten], [...queue], CODE_LINES.MINUTES_INC, AlgorithmPhase.INFECT,
-        `第 ${minute - 1} 分钟结束：本波共感染 ${newlyRotten.length} 个橘子（${newWaveColor} 色环标记）。minutes=${minute}。剩余新鲜橘子 ${fresh}${fresh === 0 ? '，全部感染完成！' : ''}`,
+        newlyRotten.length, minute - 1, [...newlyRotten], [...queue], CODE_LINES.SET_ROTTEN, AlgorithmPhase.INFECT,
+        `第 ${minute - 1} 分钟扩散完成：${size} 个源橘子同时感染了 ${newlyRotten.length} 个新鲜橘子，全部变褐（${waveColor} 色环）。例如 ${formatCell(lastFrom)} →${dirChinese}→ 感染 ${formatCell(lastInfected)}。minutes=${minute}，剩余新鲜 ${fresh}${fresh === 0 ? '，全部感染完成！' : ''}`,
         variables,
         buildCallStack([
           { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
           { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
+          { id: 'infect', label: `本波感染 ${newlyRotten.length} 个`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ fresh }) },
         ]),
         buildScope(members, variables),
-        undefined, undefined, newWaveColor
+        lastFrom, infectionPairs[infectionPairs.length - 1].dir, waveColor, lastInfected
       ));
+    } else {
+      // 这一波没有任何感染（所有源橘子相邻格子都已腐烂/空）—— 队列会自然耗尽，循环将退出
+      // 不推额外 step，避免零视觉变化
     }
   }
 
