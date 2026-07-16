@@ -112,67 +112,56 @@ export function Controls({
   const canGoNext = currentStep < totalSteps - 1;
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: '12px', 
-      flexWrap: 'wrap', 
-      justifyContent: 'center',
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      flexWrap: 'wrap',
       background: '#111827',
-      padding: '12px 20px',
+      padding: '6px 16px',
       borderRadius: '8px',
     }}>
-      <button style={getBtnStyle('reset', false)} onClick={onReset}>
-        ⏮ 重置
-      </button>
-      
-      <button 
-        style={getBtnStyle('prev', !canGoPrev)} 
+      <button style={getBtnStyle('reset', false)} onClick={onReset}>⏮</button>
+
+      <button
+        style={getBtnStyle('prev', !canGoPrev)}
         onClick={onPrev}
         disabled={!canGoPrev}
         title="快捷键: ←"
-      >
-        ← 上一步
-      </button>
-      
+      >←</button>
+
       {isPlaying ? (
-        <button 
-          style={getBtnStyle('playPause', false)} 
+        <button
+          style={getBtnStyle('playPause', false)}
           onClick={onPause}
           title="快捷键: Space"
-        >
-          ⏸ 暂停 (Space)
-        </button>
+        >⏸</button>
       ) : (
-        <button 
-          style={getBtnStyle('playPause', !canGoNext)} 
+        <button
+          style={getBtnStyle('playPause', !canGoNext)}
           onClick={onPlay}
           disabled={!canGoNext}
           title="快捷键: Space"
-        >
-          ▶ 播放 (Space)
-        </button>
+        >▶</button>
       )}
-      
-      <button 
-        style={getBtnStyle('next', !canGoNext)} 
+
+      <button
+        style={getBtnStyle('next', !canGoNext)}
         onClick={onNext}
         disabled={!canGoNext}
         title="快捷键: →"
-      >
-        下一步 →
-      </button>
-      
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px',
-        marginLeft: '12px',
-        padding: '8px 12px',
+      >→</button>
+
+      {/* 速度控制 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '4px 8px',
         background: '#1f2937',
         borderRadius: '6px',
       }}>
-        <span style={{ fontSize: '13px', color: '#9ca3af' }}>速度:</span>
+        <span style={{ fontSize: '11px', color: '#9ca3af' }}>速度</span>
         <input
           type="range"
           min="200"
@@ -180,29 +169,30 @@ export function Controls({
           step="100"
           value={2200 - playbackSpeed}
           onChange={e => onSpeedChange(2200 - Number(e.target.value))}
-          style={{ width: '80px' }}
+          style={{ width: '70px' }}
         />
       </div>
-      
-      <span style={{ 
-        color: '#9ca3af', 
-        fontSize: '13px',
-        padding: '8px 12px',
+
+      {/* 步骤计数 */}
+      <span style={{
+        color: '#9ca3af',
+        fontSize: '11px',
+        padding: '4px 8px',
         background: '#1f2937',
         borderRadius: '6px',
+        whiteSpace: 'nowrap',
       }}>
-        步骤: {currentStep + 1} / {totalSteps}
+        {currentStep + 1}/{totalSteps}
       </span>
 
-      {/* 进度条 */}
+      {/* 进度条 — 占满剩余空间，与按钮同一行 */}
       <div style={{
-        width: '100%',
-        marginTop: '12px',
+        flex: 1,
+        minWidth: '120px',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: '8px',
       }}>
-        <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>进度</span>
         <div style={{
           flex: 1,
           position: 'relative',
@@ -219,7 +209,6 @@ export function Controls({
             onStepChange(Math.max(0, Math.min(totalSteps - 1, newStep)));
           }}
         >
-          {/* 已播放部分 - 绿色 */}
           <div style={{
             position: 'absolute',
             left: 0,
@@ -230,7 +219,6 @@ export function Controls({
             borderRadius: '4px',
             transition: 'width 0.1s ease',
           }} />
-          {/* 拖动手柄 */}
           <input
             type="range"
             min={0}
@@ -249,14 +237,13 @@ export function Controls({
               margin: 0,
             }}
           />
-          {/* 可见的拖动圆点 */}
           <div style={{
             position: 'absolute',
             top: '50%',
             left: `${totalSteps > 1 ? (currentStep / (totalSteps - 1)) * 100 : 0}%`,
             transform: 'translate(-50%, -50%)',
-            width: '16px',
-            height: '16px',
+            width: '14px',
+            height: '14px',
             background: '#22c55e',
             borderRadius: '50%',
             border: '2px solid white',
@@ -264,7 +251,7 @@ export function Controls({
             pointerEvents: 'none',
           }} />
         </div>
-        <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#9ca3af', fontSize: '11px', whiteSpace: 'nowrap' }}>
           {Math.round(totalSteps > 1 ? (currentStep / (totalSteps - 1)) * 100 : 0)}%
         </span>
       </div>
