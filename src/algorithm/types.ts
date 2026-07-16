@@ -51,6 +51,11 @@ export interface GridState {
   variables: VariableValue[];
   currentCell?: Cell;
   checkingDirection?: Direction;
+  // ===== 新增：可读性视觉辅助字段 =====
+  /** 当前 BFS 波次（分钟数）对应的色相，用于给本轮新感染的格子加色环，让用户看清"一整波同时扩散" */
+  waveColor?: string;
+  /** 当前正在检查/感染的目标格子（方向箭头终点），让用户眼睛知道看哪个格子 */
+  targetCell?: Cell;
   // ===== 新增：Debug 模式数据 =====
   /** 逻辑作用域调用栈帧（方法体 → 循环 → 迭代 → 方向检查 → 感染） */
   callStack?: CallStackFrame[];
