@@ -149,7 +149,9 @@ function createStep(
   callStack: CallStackFrame[],
   scope: ScopeSnapshot,
   currentCell?: Cell,
-  checkingDirection?: Direction
+  checkingDirection?: Direction,
+  waveColor?: string,
+  targetCell?: Cell
 ): GridState {
   return {
     grid: cloneGrid(grid),
@@ -172,7 +174,24 @@ function createStep(
     scope,
     currentCell,
     checkingDirection,
+    waveColor,
+    targetCell,
   };
+}
+
+// BFS 波次色相表：按分钟循环取色，让每分钟的扩散波有不同色环，用户可区分"第1波/第2波..."
+const WAVE_COLORS = [
+  '#fbbf24', // 黄
+  '#60a5fa', // 蓝
+  '#a78bfa', // 紫
+  '#34d399', // 绿
+  '#f472b6', // 粉
+  '#fb7185', // 红
+];
+
+/** 给定分钟数返回该波次的色相（循环复用） */
+function getWaveColor(minute: number): string {
+  return WAVE_COLORS[minute % WAVE_COLORS.length];
 }
 
 export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
@@ -186,17 +205,16 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   let currentRotten = rotten;
   const cellInfoGrid = createCellInfoGrid(grid);
 
+  // ========== 第一阶段：初始化（合并为 3 个关键 step） ==========
 
-  // ========== 第一阶段：初始化 ==========
-
-  // Step: 定义类和方法
+  // Step 1: 进入方法并初始化所有局部变量（合并原 5 个逐行 step）
   {
-    const variables = createVariables({ M, N });
-    const members = createVariables({ M, N });
+    const variables = createVariables({ M, N, queueSize: 0, fresh });
+    const members = createVariables({ M, N, queueSize: 0, fresh });
     steps.push(createStep(
       grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
       0, 0, [], [], CODE_LINES.METHOD_DEF, AlgorithmPhase.INIT,
-      '开始执行 orangesRotting 方法，传入二维网格 grid',
+      `进入 orangesRotting 方法。网格 ${M}×${N}，共 ${totalCells} 格。初始化：M=${M}、N=${N}、空队列 queue、新鲜计数 fresh、方向数组 dirs（上下左右）`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
@@ -205,275 +223,43 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
     ));
   }
 
-  // Step: 初始化 M
+  // Step 2: 遍历整个网格，统计新鲜橘子 + 腐烂橘子入队（合并原逐格 ~100 step）
   {
-    const variables = createVariables({ M });
-    const members = createVariables({ M, N });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [], CODE_LINES.INIT_M, AlgorithmPhase.INIT,
-      `初始化 M = grid.length = ${M}（网格行数）`,
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-  // Step: 初始化 N
-  {
-    const variables = createVariables({ M, N });
-    const members = createVariables({ M, N });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [], CODE_LINES.INIT_N, AlgorithmPhase.INIT,
-      `初始化 N = grid[0].length = ${N}（网格列数）`,
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-  // Step: 初始化队列
-  {
-    const variables = createVariables({ M, N, queueSize: 0 });
-    const members = createVariables({ M, N, queueSize: 0 });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [], CODE_LINES.INIT_QUEUE, AlgorithmPhase.INIT,
-      '创建空的 BFS 队列 queue，用于存储腐烂橘子的坐标',
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-  // Step: 初始化 fresh 计数器
-  {
-    const variables = createVariables({ M, N, queueSize: 0, fresh: 0 });
-    const members = createVariables({ M, N, queueSize: 0, fresh: 0 });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [], CODE_LINES.INIT_FRESH, AlgorithmPhase.INIT,
-      '初始化 fresh = 0，用于统计新鲜橘子数量',
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-
-  // ========== 第二阶段：遍历网格 ==========
-
-  // Step: 开始遍历注释
-  {
-    const variables = createVariables({ M, N, queueSize: 0, fresh: 0 });
-    const members = createVariables({ M, N, queueSize: 0, fresh: 0 });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, 0, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [], CODE_LINES.COMMENT_INIT, AlgorithmPhase.INIT,
-      '开始遍历网格：统计新鲜橘子数量，将腐烂橘子坐标加入队列',
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-  // 详细遍历每个单元格
-  let tempFresh = 0;
-  const tempQueue: Cell[] = [];
-
-  for (let r = 0; r < M; r++) {
-    // Step: 外层循环开始
-    {
-      const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r });
-      const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-      steps.push(createStep(
-        grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-        0, 0, [], [...tempQueue], CODE_LINES.FOR_R, AlgorithmPhase.INIT,
-        `外层循环：r = ${r}，遍历第 ${r} 行`,
-        variables,
-        buildCallStack([
-          { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-          { id: 'init-loop', label: `遍历网格 r=${r}, c=0`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r }) },
-        ]),
-        buildScope(members, variables)
-      ));
-    }
-
-    for (let c = 0; c < N; c++) {
-      // Step: 内层循环开始
-      {
-        const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-        const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-        steps.push(createStep(
-          grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-          0, 0, [], [...tempQueue], CODE_LINES.FOR_C, AlgorithmPhase.INIT,
-          `内层循环：c = ${c}，检查单元格 [${r},${c}]`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-          ]),
-          buildScope(members, variables),
-          { row: r, col: c }
-        ));
-      }
-
-      const cellValue = grid[r][c];
-
-      if (cellValue === CellState.FRESH) {
-        // Step: 发现新鲜橘子
-        {
-          const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-          const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-          steps.push(createStep(
-            grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-            0, 0, [], [...tempQueue], CODE_LINES.IF_FRESH, AlgorithmPhase.INIT,
-            `单元格 [${r},${c}] 的值为 1（新鲜橘子）`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-            ]),
-            buildScope(members, variables),
-            { row: r, col: c }
-          ));
-        }
-
-        tempFresh++;
-
-        // Step: fresh++
-        {
-          const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-          const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-          steps.push(createStep(
-            grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-            0, 0, [], [...tempQueue], CODE_LINES.FRESH_INC, AlgorithmPhase.INIT,
-            `fresh++，新鲜橘子计数增加到 ${tempFresh}`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-            ]),
-            buildScope(members, variables),
-            { row: r, col: c }
-          ));
-        }
-      } else if (cellValue === CellState.ROTTEN) {
-        // Step: 发现腐烂橘子
-        {
-          const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-          const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-          steps.push(createStep(
-            grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-            0, 0, [], [...tempQueue], CODE_LINES.ELSE_IF_ROTTEN, AlgorithmPhase.INIT,
-            `单元格 [${r},${c}] 的值为 2（腐烂橘子）`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-            ]),
-            buildScope(members, variables),
-            { row: r, col: c }
-          ));
-        }
-
-        tempQueue.push({ row: r, col: c });
-
-        // Step: 入队
-        {
-          const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-          const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-          steps.push(createStep(
-            grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-            0, 0, [], [...tempQueue], CODE_LINES.QUEUE_ADD_INIT, AlgorithmPhase.INIT,
-            `将腐烂橘子坐标 [${r},${c}] 加入队列，队列长度变为 ${tempQueue.length}`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-            ]),
-            buildScope(members, variables),
-            { row: r, col: c }
-          ));
-        }
-      } else {
-        // Step: 空单元格
-        {
-          const variables = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh, r, c });
-          const members = createVariables({ M, N, queueSize: tempQueue.length, fresh: tempFresh });
-          steps.push(createStep(
-            grid, cellInfoGrid, 0, tempFresh, currentRotten, empty, totalCells, initialFresh,
-            0, 0, [], [...tempQueue], CODE_LINES.FOR_C, AlgorithmPhase.INIT,
-            `单元格 [${r},${c}] 的值为 0（空），跳过`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'init-loop', label: `遍历网格 r=${r}, c=${c}`, line: CODE_LINES.FOR_R[0], variables: createVariables({ r, c }) },
-            ]),
-            buildScope(members, variables),
-            { row: r, col: c }
-          ));
-        }
+    // 实际遍历计算 fresh 与 queue（与原逻辑一致，只是不再为每格推 step）
+    let tempFresh = 0;
+    const tempQueue: Cell[] = [];
+    for (let r = 0; r < M; r++) {
+      for (let c = 0; c < N; c++) {
+        if (grid[r][c] === CellState.FRESH) tempFresh++;
+        else if (grid[r][c] === CellState.ROTTEN) tempQueue.push({ row: r, col: c });
       }
     }
-  }
+    fresh = tempFresh;
+    queue.push(...tempQueue);
 
-  // 更新队列
-  queue.push(...tempQueue);
-  fresh = tempFresh;
-
-
-  // Step: 遍历完成总结
-  {
     const variables = createVariables({ M, N, queueSize: queue.length, fresh });
     const members = createVariables({ M, N, queueSize: queue.length, fresh });
     steps.push(createStep(
       grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
       0, 0, [], [...queue], CODE_LINES.INIT_MINUTES, AlgorithmPhase.INIT,
-      `网格遍历完成：发现 ${fresh} 个新鲜橘子，${queue.length} 个腐烂橘子已入队`,
+      `遍历网格完成：发现 ${fresh} 个新鲜橘子、${queue.length} 个腐烂橘子。腐烂橘子坐标已全部入队（黄色高亮 = 队首），fresh=${fresh}。接下来开始 BFS 逐分钟扩散`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
+        { id: 'init-loop', label: `遍历网格统计入队`, line: CODE_LINES.FOR_R[0], variables: createVariables({ M, N, fresh }) },
       ]),
       buildScope(members, variables)
     ));
   }
 
-  // Step: 初始化 minutes
-  {
-    const variables = createVariables({ M, N, queueSize: queue.length, fresh, minutes: 0 });
-    const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: 0 });
-    steps.push(createStep(
-      grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
-      0, 0, [], [...queue], CODE_LINES.INIT_MINUTES, AlgorithmPhase.INIT,
-      '初始化 minutes = 0，用于记录经过的分钟数',
-      variables,
-      buildCallStack([
-        { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-      ]),
-      buildScope(members, variables)
-    ));
-  }
-
-  // Step: 初始化方向数组
+  // Step 3: 初始化 BFS 所需变量并就绪（合并原 minutes/dirs 注释 step）
   {
     const variables = createVariables({ M, N, queueSize: queue.length, fresh, minutes: 0 });
     const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: 0 });
     steps.push(createStep(
       grid, cellInfoGrid, 0, fresh, currentRotten, empty, totalCells, initialFresh,
       0, 0, [], [...queue], CODE_LINES.INIT_DIRS, AlgorithmPhase.INIT,
-      '初始化方向数组 dirs = {{-1,0},{1,0},{0,-1},{0,1}}，表示上、下、左、右四个方向',
+      `初始化计时器 minutes=0、方向数组 dirs={{-1,0},{1,0},{0,-1},{0,1}}（上下左右）。准备就绪，开始 BFS 主循环`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
@@ -482,18 +268,18 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
     ));
   }
 
-  // 如果没有新鲜橘子，直接返回 0
+  // 提前返回情况保留（无新鲜橘子 / 无腐烂橘子但有新鲜橘子）
   if (fresh === 0) {
     const variables = createVariables({ fresh: 0, minutes: 0 });
     const members = createVariables({ M, N, queueSize: queue.length, fresh: 0, minutes: 0 });
     steps.push(createStep(
       grid, cellInfoGrid, 0, 0, currentRotten, empty, totalCells, initialFresh,
       0, 0, [], [...queue], CODE_LINES.RETURN, AlgorithmPhase.COMPLETE,
-      '没有新鲜橘子需要感染，直接返回 0',
+      `没有新鲜橘子需要感染，直接返回 0`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-        { id: 'return', label: `return ${0}`, line: CODE_LINES.RETURN[0], variables: createVariables({ minutes: 0 }) },
+        { id: 'return', label: `return 0`, line: CODE_LINES.RETURN[0], variables: createVariables({ minutes: 0 }) },
       ]),
       buildScope(members, variables)
     ));
@@ -519,374 +305,163 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   }
 
 
-  // ========== 第三阶段：BFS 主循环 ==========
-  
+  // ========== 第三阶段：BFS 主循环（逐分钟扩散，每步有画布变化） ==========
+
   let minute = 0;
 
-  // Step: BFS 注释
+  // Step: 进入 BFS
   {
+    const waveColor = getWaveColor(minute);
     const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
     const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
     steps.push(createStep(
       grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
       0, minute, [], [...queue], CODE_LINES.COMMENT_BFS, AlgorithmPhase.BFS_LOOP,
-      '开始 BFS 广度优先搜索主循环',
+      `开始 BFS 广度优先搜索。原理：每分钟，队列里所有腐烂橘子同时向四个方向扩散感染。第 ${minute} 分钟色环=${waveColor}`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
         { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
       ]),
-      buildScope(members, variables)
+      buildScope(members, variables),
+      undefined, undefined, waveColor
     ));
   }
 
   while (queue.length > 0 && fresh > 0) {
-    // Step: while 条件检查
-    {
-      const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
-      const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-      steps.push(createStep(
-        grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-        0, minute, [], [...queue], CODE_LINES.WHILE_LOOP, AlgorithmPhase.BFS_LOOP,
-        `检查 while 条件：队列不为空(${queue.length} > 0) 且 还有新鲜橘子(${fresh} > 0)，条件成立，进入循环`,
-        variables,
-        buildCallStack([
-          { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-          { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-        ]),
-        buildScope(members, variables)
-      ));
-    }
-
     const size = queue.length;
+    const waveColor = getWaveColor(minute);
+    const newlyRotten: Cell[] = [];
 
-    // Step: 获取当前层大小
+    // Step: 第 minute 分钟开始 — 告诉用户这一波要处理几个源橘子
     {
       const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, size });
       const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
       steps.push(createStep(
         grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
         0, minute, [], [...queue], CODE_LINES.GET_SIZE, AlgorithmPhase.BFS_LOOP,
-        `获取当前层大小 size = ${size}，这一分钟需要处理 ${size} 个腐烂橘子`,
+        `第 ${minute} 分钟开始：队列里有 ${size} 个腐烂橘子将同时向四周扩散（同色环=${waveColor} 的格子属于这一波）。剩余新鲜橘子 ${fresh}`,
+        variables,
+        buildCallStack([
+          { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
+          { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length, size }) },
+        ]),
+        buildScope(members, variables),
+        undefined, undefined, waveColor
+      ));
+    }
+
+    // 处理当前层的每个腐烂橘子
+    for (let i = 0; i < size; i++) {
+      const cell = queue.shift()!;
+      const cellVars = createVariables({ i, size, currentR: cell.row, currentC: cell.col });
+
+      // Step: 取出当前源橘子（合并原 for/出队/取坐标 3 步）
+      {
+        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
+        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
+        steps.push(createStep(
+          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
+          0, minute, [...newlyRotten], [...queue], CODE_LINES.POLL, AlgorithmPhase.BFS_LOOP,
+          `取出第 ${i + 1}/${size} 个源橘子 [${cell.row},${cell.col}]（蓝色边框高亮）。它将检查上下左右四个相邻格子`,
+          variables,
+          buildCallStack([
+            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
+            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
+            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: cellVars },
+          ]),
+          buildScope(members, variables),
+          cell, undefined, waveColor
+        ));
+      }
+
+      // 检查四个方向 —— 命中新鲜橘子才推感染 step，否则合并为 1 个"检查无感染"step
+      let infectedAny = false;
+
+      for (let d = 0; d < DIRECTIONS.length; d++) {
+        const [dr, dc] = DIRECTIONS[d];
+        const dirName = DIRECTION_NAMES[d];
+        const dirChinese = dirName === 'up' ? '上' : dirName === 'down' ? '下' : dirName === 'left' ? '左' : '右';
+        const nr = cell.row + dr;
+        const nc = cell.col + dc;
+        const inBounds = nr >= 0 && nr < M && nc >= 0 && nc < N;
+        const isFresh = inBounds && grid[nr][nc] === CellState.FRESH;
+
+        if (!isFresh) {
+          // 跳过：越界或非新鲜 —— 不推 step（避免零视觉变化的 step）
+          continue;
+        }
+
+        // 命中新鲜橘子 —— 推 1 个感染 step（合并原 检查方向/算nr/算nc/设腐烂/fresh--/入队 6 步）
+        // Step: 检查方向并感染
+        grid[nr][nc] = CellState.ROTTEN;
+        cellInfoGrid[nr][nc].state = CellState.ROTTEN;
+        cellInfoGrid[nr][nc].infectionTime = minute + 1;
+        fresh--;
+        currentRotten++;
+        queue.push({ row: nr, col: nc });
+        newlyRotten.push({ row: nr, col: nc });
+        infectedAny = true;
+
+        {
+          const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col, nr, nc });
+          const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
+          steps.push(createStep(
+            grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
+            0, minute, [...newlyRotten], [...queue], CODE_LINES.SET_ROTTEN, AlgorithmPhase.INFECT,
+            `源 [${cell.row},${cell.col}] 检查${dirChinese}方向 → 相邻 [${nr},${nc}] 是新鲜橘子，感染！橘子变褐（${waveColor} 色环）、fresh=${fresh}、新感染橘子入队`,
+            variables,
+            buildCallStack([
+              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
+              { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
+              { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
+              { id: 'infect', label: `感染 [${nr},${nc}]`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ nr, nc, fresh }) },
+            ]),
+            buildScope(members, variables),
+            cell, dirName, waveColor, { row: nr, col: nc }
+          ));
+        }
+      }
+
+      // 如果该源橘子四个方向都没感染到任何橘子，推 1 个说明 step（让用户知道这个源橘子"空转"了）
+      if (!infectedAny) {
+        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
+        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
+        steps.push(createStep(
+          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
+          0, minute, [...newlyRotten], [...queue], CODE_LINES.FOR_DIR, AlgorithmPhase.CHECK_ADJACENT,
+          `源 [${cell.row},${cell.col}] 检查四个方向：相邻格子都已腐烂或为空，本分钟未感染新橘子`,
+          variables,
+          buildCallStack([
+            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
+            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
+            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ currentR: cell.row, currentC: cell.col }) },
+            { id: 'check-direction', label: `检查四方向（无命中）`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col }) },
+          ]),
+          buildScope(members, variables),
+          cell, undefined, waveColor
+        ));
+      }
+    }
+
+    // 第 minute 分钟结束 —— 推 1 个分钟总结 step（仅当有感染发生）
+    if (newlyRotten.length > 0) {
+      minute++;
+      const newWaveColor = getWaveColor(minute - 1);
+      const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
+      const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
+      steps.push(createStep(
+        grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
+        newlyRotten.length, minute - 1, [...newlyRotten], [...queue], CODE_LINES.MINUTES_INC, AlgorithmPhase.INFECT,
+        `第 ${minute - 1} 分钟结束：本波共感染 ${newlyRotten.length} 个橘子（${newWaveColor} 色环标记）。minutes=${minute}。剩余新鲜橘子 ${fresh}${fresh === 0 ? '，全部感染完成！' : ''}`,
         variables,
         buildCallStack([
           { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
           { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
         ]),
-        buildScope(members, variables)
+        buildScope(members, variables),
+        undefined, undefined, newWaveColor
       ));
-    }
-
-    const newlyRotten: Cell[] = [];
-
-    // 处理当前层的每个腐烂橘子
-    for (let i = 0; i < size; i++) {
-      // Step: for 循环
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, size, i });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.FOR_I, AlgorithmPhase.BFS_LOOP,
-          `处理第 ${i + 1}/${size} 个腐烂橘子`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [-,-]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size }) },
-          ]),
-          buildScope(members, variables)
-        ));
-      }
-
-      const cell = queue.shift()!;
-
-      // Step: 出队
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, size, i });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.POLL, AlgorithmPhase.BFS_LOOP,
-          `从队列中取出腐烂橘子 [${cell.row},${cell.col}]`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-          ]),
-          buildScope(members, variables),
-          cell
-        ));
-      }
-
-      // Step: 获取坐标
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.GET_RC, AlgorithmPhase.BFS_LOOP,
-          `获取坐标 r = ${cell.row}, c = ${cell.col}`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-          ]),
-          buildScope(members, variables),
-          cell
-        ));
-      }
-
-
-      // Step: 检查方向注释
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          0, minute, [...newlyRotten], [...queue], CODE_LINES.COMMENT_CHECK, AlgorithmPhase.CHECK_ADJACENT,
-          `开始检查 [${cell.row},${cell.col}] 的四个相邻方向`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-            { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-          ]),
-          buildScope(members, variables),
-          cell
-        ));
-      }
-
-      // 检查四个方向
-      for (let d = 0; d < DIRECTIONS.length; d++) {
-        const [dr, dc] = DIRECTIONS[d];
-        const dirName = DIRECTION_NAMES[d];
-        const dirChinese = dirName === 'up' ? '上' : dirName === 'down' ? '下' : dirName === 'left' ? '左' : '右';
-
-        // Step: 遍历方向
-        {
-          const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, currentR: cell.row, currentC: cell.col });
-          const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-          steps.push(createStep(
-            grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-            0, minute, [...newlyRotten], [...queue], CODE_LINES.FOR_DIR, AlgorithmPhase.CHECK_ADJACENT,
-            `检查${dirChinese}方向 (dir = [${dr},${dc}])`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-              { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-              { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col }) },
-            ]),
-            buildScope(members, variables),
-            cell, dirName
-          ));
-        }
-
-        const nr = cell.row + dr;
-        const nc = cell.col + dc;
-
-        // Step: 计算 nr
-        {
-          const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, currentR: cell.row, currentC: cell.col });
-          const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-          steps.push(createStep(
-            grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-            0, minute, [...newlyRotten], [...queue], CODE_LINES.CALC_NR, AlgorithmPhase.CHECK_ADJACENT,
-            `计算新行号 nr = ${cell.row} + (${dr}) = ${nr}`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-              { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-              { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col, nr }) },
-            ]),
-            buildScope(members, variables),
-            cell, dirName
-          ));
-        }
-
-        // Step: 计算 nc
-        {
-          const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc, currentR: cell.row, currentC: cell.col });
-          const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-          steps.push(createStep(
-            grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-            0, minute, [...newlyRotten], [...queue], CODE_LINES.CALC_NC, AlgorithmPhase.CHECK_ADJACENT,
-            `计算新列号 nc = ${cell.col} + (${dc}) = ${nc}`,
-            variables,
-            buildCallStack([
-              { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-              { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-              { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-              { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col, nr, nc }) },
-            ]),
-            buildScope(members, variables),
-            cell, dirName
-          ));
-        }
-
-        // 检查边界和是否为新鲜橘子
-        const inBounds = nr >= 0 && nr < M && nc >= 0 && nc < N;
-        const isFresh = inBounds && grid[nr][nc] === CellState.FRESH;
-
-
-        if (!inBounds) {
-          // Step: 越界
-          {
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.IF_BOUNDS, AlgorithmPhase.CHECK_ADJACENT,
-              `[${nr},${nc}] 越界，跳过此方向`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-                { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col, nr, nc }) },
-              ]),
-              buildScope(members, variables),
-              cell, dirName
-            ));
-          }
-        } else if (!isFresh) {
-          // Step: 不是新鲜橘子
-          {
-            const cellType = grid[nr][nc] === CellState.ROTTEN ? '腐烂橘子' : '空单元格';
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.IF_BOUNDS, AlgorithmPhase.CHECK_ADJACENT,
-              `[${nr},${nc}] 是${cellType}，不是新鲜橘子，跳过`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-                { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col, nr, nc }) },
-              ]),
-              buildScope(members, variables),
-              cell, dirName
-            ));
-          }
-        } else {
-          // Step: 发现新鲜橘子，准备感染
-          {
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.IF_BOUNDS, AlgorithmPhase.CHECK_ADJACENT,
-              `[${nr},${nc}] 是新鲜橘子！条件满足，准备感染`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'iterate-cell', label: `处理第 ${i + 1}/${size} 个橘子 [${cell.row},${cell.col}]`, line: CODE_LINES.FOR_I[0], variables: createVariables({ i, size, currentR: cell.row, currentC: cell.col }) },
-                { id: 'check-direction', label: `检查方向: ${dirChinese}`, line: CODE_LINES.FOR_DIR[0], variables: createVariables({ currentR: cell.row, currentC: cell.col, nr, nc }) },
-              ]),
-              buildScope(members, variables),
-              cell, dirName
-            ));
-          }
-
-          // 感染橘子
-          grid[nr][nc] = CellState.ROTTEN;
-          cellInfoGrid[nr][nc].state = CellState.ROTTEN;
-          cellInfoGrid[nr][nc].infectionTime = minute + 1;
-
-          // Step: 设置为腐烂
-          {
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten + 1, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.SET_ROTTEN, AlgorithmPhase.INFECT,
-              `将 [${nr},${nc}] 设置为腐烂状态 (grid[${nr}][${nc}] = 2)`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'infect', label: `感染 [${nr},${nc}]`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ nr, nc }) },
-              ]),
-              buildScope(members, variables),
-              { row: nr, col: nc }, dirName
-            ));
-          }
-
-          fresh--;
-          currentRotten++;
-
-          // Step: fresh--
-          {
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.FRESH_DEC, AlgorithmPhase.INFECT,
-              `fresh--，新鲜橘子数量减少到 ${fresh}`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'infect', label: `感染 [${nr},${nc}]`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ nr, nc, fresh }) },
-              ]),
-              buildScope(members, variables),
-              { row: nr, col: nc }, dirName
-            ));
-          }
-
-          queue.push({ row: nr, col: nc });
-          newlyRotten.push({ row: nr, col: nc });
-
-          // Step: 入队
-          {
-            const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute, nr, nc });
-            const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-            steps.push(createStep(
-              grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-              0, minute, [...newlyRotten], [...queue], CODE_LINES.QUEUE_ADD, AlgorithmPhase.INFECT,
-              `将新感染的橘子 [${nr},${nc}] 加入队列，队列长度变为 ${queue.length}`,
-              variables,
-              buildCallStack([
-                { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-                { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-                { id: 'infect', label: `感染 [${nr},${nc}]`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ nr, nc }) },
-              ]),
-              buildScope(members, variables),
-              { row: nr, col: nc }, dirName
-            ));
-          }
-        }
-      }
-    }
-
-
-    // 如果这一分钟有橘子被感染
-    if (newlyRotten.length > 0) {
-      minute++;
-
-      // Step: minutes++
-      {
-        const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
-        const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
-        steps.push(createStep(
-          grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
-          newlyRotten.length, minute, [...newlyRotten], [...queue], CODE_LINES.MINUTES_INC, AlgorithmPhase.INFECT,
-          `第 ${minute} 分钟结束：本分钟感染了 ${newlyRotten.length} 个橘子，minutes++ = ${minute}`,
-          variables,
-          buildCallStack([
-            { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
-            { id: 'bfs-loop', label: `while (minute=${minute}, fresh=${fresh})`, line: CODE_LINES.WHILE_LOOP[0], variables: createVariables({ fresh, minutes: minute, queueSize: queue.length }) },
-          ]),
-          buildScope(members, variables)
-        ));
-      }
     }
   }
 
@@ -895,14 +470,14 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
   // Step: while 条件不满足
   if (queue.length === 0 || fresh === 0) {
     const reason = fresh === 0
-      ? '所有新鲜橘子都已被感染 (fresh = 0)'
-      : '队列为空，没有更多腐烂橘子可以传播';
+      ? `所有新鲜橘子都已被感染（fresh=0）`
+      : `队列为空，没有更多腐烂橘子可以传播，但仍有 ${fresh} 个新鲜橘子被空格隔离`;
     const variables = createVariables({ fresh, queueSize: queue.length, minutes: minute });
     const members = createVariables({ M, N, queueSize: queue.length, fresh, minutes: minute });
     steps.push(createStep(
       grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
       0, minute, [], [...queue], CODE_LINES.WHILE_LOOP, AlgorithmPhase.BFS_LOOP,
-      `while 条件不满足：${reason}，退出循环`,
+      `while 条件不再满足：${reason}，退出 BFS 循环`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },
@@ -921,8 +496,8 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
       grid, cellInfoGrid, minute, fresh, currentRotten, empty, totalCells, initialFresh,
       0, minute, [], [], CODE_LINES.RETURN, AlgorithmPhase.COMPLETE,
       success
-        ? `✅ 算法完成！所有橘子在 ${minute} 分钟内全部腐烂，返回 ${minute}`
-        : `❌ 算法完成！仍有 ${fresh} 个橘子无法被感染（被空单元格隔离），返回 -1`,
+        ? `✅ 完成！所有橘子在 ${minute} 分钟内全部腐烂，return ${minute}`
+        : `❌ 完成！仍有 ${fresh} 个橘子被空格隔离无法感染，return -1`,
       variables,
       buildCallStack([
         { id: 'method', label: 'orangesRotting(grid)', line: CODE_LINES.METHOD_DEF[0], variables: members },

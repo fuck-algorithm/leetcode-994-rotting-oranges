@@ -183,3 +183,50 @@ describe('Call Stack & Scope Data', () => {
     expect(lastStep.callStack!.some(f => f.id === 'return')).toBe(true);
   });
 });
+
+describe('演示可读性：step 粒度合理性', () => {
+  it('示例1：初始化阶段 step 不超过 5 个（原 17+）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    const initSteps = result.steps.filter(s => s.phase === AlgorithmPhase.INIT);
+    expect(initSteps.length).toBeLessThanOrEqual(5);
+  });
+
+  it('示例1：总 step 数显著减少（原 172 → 应 < 50）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    expect(result.steps.length).toBeLessThan(50);
+  });
+
+  it('示例2：check_adjacent 阶段 step 大幅减少（原 102 → 应 < 30）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [0, 1, 1], [1, 0, 1]];
+    const result = generateSteps(grid);
+    const checkSteps = result.steps.filter(s => s.phase === AlgorithmPhase.CHECK_ADJACENT);
+    expect(checkSteps.length).toBeLessThan(30);
+  });
+
+  it('每个单格感染 step 都带 waveColor 和 targetCell（视觉强相关）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    // 单格感染 step：description 以"源"开头（"源 [r,c] 检查方向 → 感染"），区别于"分钟结束"整波总结
+    const infectSteps = result.steps.filter(
+      s => s.phase === AlgorithmPhase.INFECT && s.description.startsWith('源')
+    );
+    expect(infectSteps.length).toBeGreaterThan(0);
+    for (const s of infectSteps) {
+      expect(s.waveColor).toBeDefined();
+      expect(s.targetCell).toBeDefined();
+    }
+  });
+
+  it('description 是叙事句（含中文标点或箭头，非纯代码行）', () => {
+    const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    const result = generateSteps(grid);
+    expect(result.steps.length).toBeGreaterThan(0);
+    for (const s of result.steps) {
+      // 叙事句应含中文逗号、句号、箭头 → 等可读符号
+      const isNarrative = /[，。→！]/.test(s.description);
+      expect(isNarrative).toBe(true);
+    }
+  });
+});
