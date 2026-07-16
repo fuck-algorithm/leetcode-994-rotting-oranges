@@ -74,7 +74,7 @@ const COLORS = {
 };
 
 export function CodePanel({ highlightedLines, variables = [], callStack, scope }: CodePanelProps) {
-  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(true);
 
   const variablesByLine: Record<number, VariableValue[]> = {};
   for (const v of variables) {
