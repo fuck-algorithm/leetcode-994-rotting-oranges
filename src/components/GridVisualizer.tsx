@@ -26,7 +26,7 @@ export function GridVisualizer({
   showInfectionTime = true,
 }: GridVisualizerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { grid, cellInfoGrid, newlyRotten, currentCell } = gridState;
+  const { grid, cellInfoGrid, newlyRotten, currentCell, waveColor, targetCell } = gridState;
 
   useEffect(() => {
     if (!svgRef.current || !grid.length) return;
@@ -67,7 +67,9 @@ export function GridVisualizer({
       .attr('rx', Math.max(4, cellSize * 0.12))
       .attr('fill', d => COLORS[d.state])
       .attr('stroke', d => {
+        // 优先级：当前源格子 > 新感染(波次色环) > 默认透明
         if (currentCell && currentCell.row === d.r && currentCell.col === d.c) return '#60a5fa';
+        if (isNewlyRotten(d.r, d.c, newlyRotten) && waveColor) return waveColor;
         if (isNewlyRotten(d.r, d.c, newlyRotten)) return '#fbbf24';
         return 'transparent';
       })
@@ -76,7 +78,12 @@ export function GridVisualizer({
         if (isNewlyRotten(d.r, d.c, newlyRotten)) return 3;
         return 0;
       })
-      .style('filter', d => isNewlyRotten(d.r, d.c, newlyRotten) ? 'drop-shadow(0 0 8px #fbbf24)' : 'none');
+      .style('filter', d => {
+        if (currentCell && currentCell.row === d.r && currentCell.col === d.c) return 'drop-shadow(0 0 8px #60a5fa)';
+        if (isNewlyRotten(d.r, d.c, newlyRotten) && waveColor) return `drop-shadow(0 0 8px ${waveColor})`;
+        if (isNewlyRotten(d.r, d.c, newlyRotten)) return 'drop-shadow(0 0 8px #fbbf24)';
+        return 'none';
+      });
 
     cells.filter(d => d.state !== CellState.EMPTY)
       .append('text')
@@ -117,6 +124,41 @@ export function GridVisualizer({
         .attr('fill', '#ef4444')
         .text('初始');
 
+    // 方向箭头：从当前源格子指向正在感染的目标格子，让用户看清"从哪感染到哪"
+    if (currentCell && targetCell) {
+      const cx = currentCell.col * (cellSize + gap) + cellSize / 2;
+      const cy = currentCell.row * (cellSize + gap) + cellSize / 2;
+      const tx = targetCell.col * (cellSize + gap) + cellSize / 2;
+      const ty = targetCell.row * (cellSize + gap) + cellSize / 2;
+      // 缩短箭头两端，避免压在格子中心
+      const dx = tx - cx, dy = ty - cy;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len, uy = dy / len;
+      const x1 = cx + ux * (cellSize * 0.35);
+      const y1 = cy + uy * (cellSize * 0.35);
+      const x2 = tx - ux * (cellSize * 0.35);
+      const y2 = ty - uy * (cellSize * 0.35);
+      const arrowColor = waveColor || '#fbbf24';
+      const defs = root.append('defs');
+      const marker = defs.append('marker')
+        .attr('id', 'dir-arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 8).attr('refY', 0)
+        .attr('markerWidth', 6).attr('markerHeight', 6)
+        .attr('orient', 'auto');
+      marker.append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', arrowColor);
+      root.append('line')
+        .attr('x1', x1).attr('y1', y1)
+        .attr('x2', x2).attr('y2', y2)
+        .attr('stroke', arrowColor)
+        .attr('stroke-width', Math.max(2, cellSize * 0.08))
+        .attr('stroke-linecap', 'round')
+        .attr('marker-end', 'url(#dir-arrow)')
+        .style('filter', `drop-shadow(0 0 4px ${arrowColor})`);
+    }
+
     // d3.zoom：滚轮缩放 + 拖拽平移，作用于 root <g>
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
@@ -124,7 +166,7 @@ export function GridVisualizer({
         root.attr('transform', event.transform.toString());
       });
     svg.call(zoom);
-  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime]);
+  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell]);
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
