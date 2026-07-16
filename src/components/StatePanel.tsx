@@ -46,6 +46,23 @@ export function StatePanel({
       height: '100%',
       overflow: 'auto',
     }}>
+      {/* 当前步骤叙事摘要 — 用户第一眼看到的"这一步在做什么" */}
+      <div style={{
+        background: '#0f172a',
+        border: '1px solid #1e3a8a',
+        borderRadius: '6px',
+        padding: '8px',
+        marginBottom: '8px',
+        fontSize: '12px',
+        lineHeight: '1.5',
+        color: '#e5e7eb',
+      }}>
+        <div style={{ fontSize: '10px', color: '#60a5fa', marginBottom: '4px', letterSpacing: '0.5px' }}>
+          📖 当前步骤
+        </div>
+        {description}
+      </div>
+
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
