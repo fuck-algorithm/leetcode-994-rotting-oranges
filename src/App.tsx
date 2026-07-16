@@ -103,8 +103,8 @@ function App() {
       height: '100vh',
       display: 'grid',
       gridTemplateRows: 'auto auto 1fr auto',
-      gap: '10px',
-      padding: '10px',
+      gap: '6px',
+      padding: '6px',
       background: '#1a1a2e',
       overflow: 'hidden',
     }}>

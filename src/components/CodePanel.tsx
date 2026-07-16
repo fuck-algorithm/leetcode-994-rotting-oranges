@@ -1,4 +1,5 @@
 import { VariableValue, CallStackFrame, ScopeSnapshot } from '../algorithm/types';
+import { useState } from 'react';
 import { CallStackPanel } from './CallStackPanel';
 
 interface CodePanelProps {
@@ -73,7 +74,8 @@ const COLORS = {
 };
 
 export function CodePanel({ highlightedLines, variables = [], callStack, scope }: CodePanelProps) {
-  // 创建变量行映射
+  const [debugOpen, setDebugOpen] = useState(false);
+
   const variablesByLine: Record<number, VariableValue[]> = {};
   for (const v of variables) {
     if (!variablesByLine[v.line]) {
@@ -83,146 +85,157 @@ export function CodePanel({ highlightedLines, variables = [], callStack, scope }
   }
 
   return (
-    <div style={{ 
-      background: '#1e1e1e', 
-      borderRadius: '8px', 
-      padding: '12px',
+    <div style={{
+      background: '#1e1e1e',
+      borderRadius: '8px',
+      padding: '8px',
       height: '100%',
-      overflow: 'auto',
-      fontSize: '12px',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      fontSize: '11px',
       fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, "Courier New", monospace',
       border: '1px solid #333',
     }}>
-      <h3 style={{ 
-        margin: '0 0 12px 0', 
-        color: '#60a5fa', 
-        fontSize: '14px',
+      {/* 标题栏 */}
+      <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
+        marginBottom: '6px',
+        flexShrink: 0,
       }}>
-        <span style={{ fontSize: '16px' }}>☕</span> 
-        Java 代码
-        <span style={{ 
-          marginLeft: 'auto', 
-          fontSize: '10px', 
-          color: '#888',
-          background: '#333',
-          padding: '2px 8px',
-          borderRadius: '4px',
-        }}>
-          DEBUG MODE
-        </span>
-      </h3>
-      <pre style={{ margin: 0 }}>
-        {lines.map((line, i) => {
-          const lineNum = i + 1;
-          const isHighlighted = highlightedLines.includes(lineNum);
-          const lineVars = variablesByLine[lineNum] || [];
-          
-          return (
-            <div
-              key={i}
-              style={{
-                background: isHighlighted 
-                  ? 'linear-gradient(90deg, rgba(255, 255, 0, 0.15) 0%, rgba(255, 255, 0, 0.05) 100%)' 
-                  : 'transparent',
-                borderLeft: isHighlighted ? '3px solid #ffcc00' : '3px solid transparent',
-                paddingLeft: '8px',
-                paddingRight: '8px',
-                lineHeight: '1.6',
-                display: 'flex',
-                alignItems: 'center',
-                minHeight: '20px',
-                position: 'relative',
-                transition: 'background 0.2s ease',
-              }}
-            >
-              {/* 断点指示器 */}
-              {isHighlighted && (
-                <span style={{
-                  position: 'absolute',
-                  left: '-2px',
-                  width: '8px',
-                  height: '8px',
-                  background: '#ff4444',
-                  borderRadius: '50%',
-                  boxShadow: '0 0 6px #ff4444',
-                }}/>
-              )}
-              
-              {/* 行号 */}
-              <span style={{ 
-                color: isHighlighted ? '#ffcc00' : '#858585', 
-                marginRight: '16px', 
-                userSelect: 'none',
-                minWidth: '24px',
-                textAlign: 'right',
-                fontSize: '11px',
-              }}>
-                {String(lineNum).padStart(2, ' ')}
-              </span>
-              
-              {/* 代码内容 */}
-              <span style={{ flex: 1 }}>
-                {highlightSyntax(line)}
-              </span>
-              
-              {/* 变量值显示 - Debug 风格 */}
-              {lineVars.length > 0 && (
-                <span style={{
-                  marginLeft: '16px',
-                  padding: '2px 10px',
-                  background: 'rgba(255, 152, 0, 0.15)',
-                  border: '1px solid rgba(255, 152, 0, 0.4)',
-                  borderRadius: '4px',
-                  color: '#ffb74d',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  animation: 'varPulse 0.5s ease',
+        <span style={{ fontSize: '13px' }}>☕</span>
+        <span style={{ color: '#60a5fa', fontSize: '12px', fontWeight: 600 }}>Java 代码</span>
+        {callStack && callStack.length > 0 && (
+          <button
+            onClick={() => setDebugOpen(o => !o)}
+            style={{
+              marginLeft: 'auto',
+              fontSize: '10px',
+              color: debugOpen ? '#fbbf24' : '#888',
+              background: '#333',
+              border: '1px solid #444',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            {debugOpen ? '▼' : '▶'} DEBUG
+          </button>
+        )}
+      </div>
+
+      {/* 代码区 — 紧凑行高，独立滚动（仅在超出时出现） */}
+      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        <pre style={{ margin: 0 }}>
+          {lines.map((line, i) => {
+            const lineNum = i + 1;
+            const isHighlighted = highlightedLines.includes(lineNum);
+            const lineVars = variablesByLine[lineNum] || [];
+
+            return (
+              <div
+                key={i}
+                style={{
+                  background: isHighlighted
+                    ? 'linear-gradient(90deg, rgba(255, 255, 0, 0.15) 0%, rgba(255, 255, 0, 0.05) 100%)'
+                    : 'transparent',
+                  borderLeft: isHighlighted ? '3px solid #ffcc00' : '3px solid transparent',
+                  paddingLeft: '6px',
+                  paddingRight: '6px',
+                  lineHeight: '1.4',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                }}>
-                  <span style={{ color: '#888', fontSize: '10px' }}>⬤</span>
-                  {lineVars.map((v, idx) => (
-                    <span key={v.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ color: '#9cdcfe' }}>{v.name}</span>
-                      <span style={{ color: '#888' }}>=</span>
-                      <span style={{ color: '#b5cea8', fontWeight: 600 }}>{v.value}</span>
-                      {idx < lineVars.length - 1 && <span style={{ color: '#555' }}>│</span>}
-                    </span>
-                  ))}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </pre>
+                  minHeight: '16px',
+                  position: 'relative',
+                }}
+              >
+                {isHighlighted && (
+                  <span style={{
+                    position: 'absolute',
+                    left: '-2px',
+                    width: '7px',
+                    height: '7px',
+                    background: '#ff4444',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 6px #ff4444',
+                  }}/>
+                )}
 
-      {/* ===== Debug 模式：调用栈 + 作用域观察 ===== */}
-      {callStack && callStack.length > 0 && (
-        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{
+                  color: isHighlighted ? '#ffcc00' : '#858585',
+                  marginRight: '10px',
+                  userSelect: 'none',
+                  minWidth: '20px',
+                  textAlign: 'right',
+                  fontSize: '10px',
+                }}>
+                  {String(lineNum).padStart(2, ' ')}
+                </span>
+
+                <span style={{ flex: 1, whiteSpace: 'pre' }}>
+                  {highlightSyntax(line)}
+                </span>
+
+                {lineVars.length > 0 && (
+                  <span style={{
+                    marginLeft: '10px',
+                    padding: '1px 6px',
+                    background: 'rgba(255, 152, 0, 0.15)',
+                    border: '1px solid rgba(255, 152, 0, 0.4)',
+                    borderRadius: '3px',
+                    color: '#ffb74d',
+                    fontSize: '10px',
+                    whiteSpace: 'nowrap',
+                    animation: 'varPulse 0.5s ease',
+                  }}>
+                    {lineVars.map((v, idx) => (
+                      <span key={v.name}>
+                        <span style={{ color: '#9cdcfe' }}>{v.name}</span>
+                        <span style={{ color: '#888' }}>=</span>
+                        <span style={{ color: '#b5cea8', fontWeight: 600 }}>{v.value}</span>
+                        {idx < lineVars.length - 1 && <span style={{ color: '#555' }}>│</span>}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </pre>
+      </div>
+
+      {/* Debug 面板 — 默认折叠，展开时独立滚动区，不撑高代码区 */}
+      {debugOpen && callStack && callStack.length > 0 && (
+        <div style={{
+          marginTop: '6px',
+          flexShrink: 0,
+          maxHeight: '40%',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}>
           <CallStackPanel callStack={callStack} />
 
           {scope && (
             <div style={{
               background: '#252526',
               borderRadius: '6px',
-              padding: '8px',
+              padding: '6px',
               border: '1px solid #333',
             }}>
-              <h4 style={{ margin: '0 0 6px 0', color: '#60a5fa', fontSize: '12px' }}>🔍 变量观察</h4>
-              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>成员变量</div>
-              <div style={{ marginBottom: '8px' }}>
+              <h4 style={{ margin: '0 0 4px 0', color: '#60a5fa', fontSize: '11px' }}>🔍 变量观察</h4>
+              <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>成员变量</div>
+              <div style={{ marginBottom: '4px' }}>
                 {scope.members.length === 0 ? (
                   <span style={{ color: '#6b7280', fontSize: '10px' }}>(无)</span>
                 ) : (
                   <VariableGrid variables={scope.members} />
                 )}
               </div>
-              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>局部变量</div>
+              <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>局部变量</div>
               <div>
                 {scope.locals.length === 0 ? (
                   <span style={{ color: '#6b7280', fontSize: '10px' }}>(无)</span>
