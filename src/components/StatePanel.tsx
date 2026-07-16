@@ -38,121 +38,107 @@ export function StatePanel({
     progress = Math.round((infectedCount / initialFreshCount) * 100);
   }
 
-  const statStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '6px 0',
-    borderBottom: '1px solid #374151',
-    fontSize: '13px',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  };
-
   return (
-    <div style={{ 
-      background: '#1f2937', 
-      borderRadius: '8px', 
-      padding: '12px',
+    <div style={{
+      background: '#1f2937',
+      borderRadius: '8px',
+      padding: '8px',
       height: '100%',
       overflow: 'auto',
     }}>
-      <h3 style={{ margin: '0 0 10px 0', color: '#60a5fa', fontSize: '14px' }}>📊 算法状态</h3>
-      
-      {/* 时间和波次 */}
-      <div style={statStyle}>
-        <span style={labelStyle}>⏱ 当前分钟 / BFS 波次</span>
-        <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '16px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '6px',
+      }}>
+        <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '13px' }}>📊 算法状态</h3>
+        <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '13px' }}>
           {minute} / {bfsWave}
         </span>
       </div>
-      
-      {/* 单元格统计 */}
-      <div style={{ 
-        padding: '8px 0', 
-        borderBottom: '1px solid #374151',
-      }}>
-        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>
-          单元格统计 (总计: {totalCells})
-        </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <StatBadge icon="⬜" label="空" value={emptyCount} color="#6b7280" />
-          <StatBadge icon="🍊" label="新鲜" value={freshCount} color="#f97316" />
-          <StatBadge icon="🟤" label="腐烂" value={rottenCount} color="#92400e" />
-        </div>
+
+      {/* 单元格统计 — 紧凑 badge 横排 */}
+      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px', alignItems: 'center' }}>
+        <StatBadge icon="⬜" label="空" value={emptyCount} color="#6b7280" />
+        <StatBadge icon="🍊" label="鲜" value={freshCount} color="#f97316" />
+        <StatBadge icon="🟤" label="腐" value={rottenCount} color="#92400e" />
+        <span style={{ fontSize: '10px', color: '#6b7280', marginLeft: 'auto' }}>共{totalCells}</span>
       </div>
-      
-      {/* 感染进度 */}
-      <div style={{ padding: '8px 0', borderBottom: '1px solid #374151' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+
+      {/* 感染进度 — 单行 */}
+      <div style={{ marginBottom: '6px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '6px',
+          marginBottom: '3px',
         }}>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>感染进度</span>
-          <span style={{ color: '#22c55e', fontWeight: 'bold' }}>{progress}%</span>
+          <span style={{ fontSize: '11px', color: '#9ca3af' }}>感染进度</span>
+          <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '12px' }}>{progress}%</span>
         </div>
-        <div style={{ 
-          height: '8px', 
-          background: '#374151', 
-          borderRadius: '4px',
+        <div style={{
+          height: '6px',
+          background: '#374151',
+          borderRadius: '3px',
           overflow: 'hidden',
         }}>
           <div style={{
             height: '100%',
             width: `${progress}%`,
             background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-            borderRadius: '4px',
+            borderRadius: '3px',
             transition: 'width 0.3s ease',
           }} />
         </div>
       </div>
-      
-      {/* 本轮感染数 */}
+
+      {/* 本轮感染 */}
       {infectedThisMinute > 0 && (
-        <div style={statStyle}>
-          <span style={labelStyle}>🔥 本轮感染</span>
-          <span style={{ 
-            color: '#ef4444', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '3px 0',
+          fontSize: '12px',
+        }}>
+          <span>🔥 本轮感染</span>
+          <span style={{
+            color: '#ef4444',
             fontWeight: 'bold',
-            padding: '2px 8px',
+            padding: '1px 6px',
             background: '#ef444420',
-            borderRadius: '4px',
+            borderRadius: '3px',
           }}>
             +{infectedThisMinute}
           </span>
         </div>
       )}
-      
+
       {/* 最终结果 */}
       {isComplete && (
-        <div style={{ 
-          marginTop: '12px', 
-          padding: '12px', 
+        <div style={{
+          marginTop: '6px',
+          padding: '8px',
           background: result === -1 ? '#7f1d1d' : '#14532d',
           borderRadius: '6px',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: '12px', marginBottom: '4px', opacity: 0.8 }}>最终结果</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '11px', marginBottom: '2px', opacity: 0.8 }}>最终结果</div>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
             {result === -1 ? '-1 (无解)' : `${result} 分钟`}
           </div>
         </div>
       )}
-      
+
       {/* 描述 */}
-      <div style={{ 
-        marginTop: '12px', 
-        padding: '10px', 
+      <div style={{
+        marginTop: '6px',
+        padding: '6px',
         background: '#374151',
-        borderRadius: '6px',
-        fontSize: '12px',
-        lineHeight: '1.5',
+        borderRadius: '4px',
+        fontSize: '11px',
+        lineHeight: '1.4',
       }}>
         💡 {description}
       </div>
