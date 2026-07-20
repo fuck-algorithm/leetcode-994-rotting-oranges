@@ -204,7 +204,7 @@ describe('演示可读性：step 粒度合理性', () => {
     expect(result.steps.length).toBeLessThan(30);
   });
 
-  it('每个 INFECT（整波扩散）step 都带 waveColor 和 targetCell（视觉强相关）', () => {
+  it('每个 INFECT（整波扩散）step 都带 waveColor、targetCell 和 pendingInfect（视觉强相关）', () => {
     const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
     const result = generateSteps(grid);
     const infectSteps = result.steps.filter(s => s.phase === AlgorithmPhase.INFECT);
@@ -213,6 +213,9 @@ describe('演示可读性：step 粒度合理性', () => {
       expect(s.waveColor).toBeDefined();
       expect(s.targetCell).toBeDefined();
       expect(s.newlyRotten.length).toBeGreaterThan(0);
+      // pendingInfect 与 newlyRotten 应一一对应（同一批格子）
+      expect(s.pendingInfect).toBeDefined();
+      expect(s.pendingInfect!.length).toBe(s.newlyRotten.length);
     }
   });
 

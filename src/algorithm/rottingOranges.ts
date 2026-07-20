@@ -151,7 +151,8 @@ function createStep(
   currentCell?: Cell,
   checkingDirection?: Direction,
   waveColor?: string,
-  targetCell?: Cell
+  targetCell?: Cell,
+  pendingInfect?: Cell[]
 ): GridState {
   return {
     grid: cloneGrid(grid),
@@ -176,6 +177,7 @@ function createStep(
     checkingDirection,
     waveColor,
     targetCell,
+    pendingInfect: pendingInfect ? pendingInfect.map(c => ({ ...c })) : undefined,
   };
 }
 
@@ -406,7 +408,8 @@ export function generateSteps(initialGrid: CellState[][]): AlgorithmResult {
           { id: 'infect', label: `本波感染 ${newlyRotten.length} 个`, line: CODE_LINES.SET_ROTTEN[0], variables: createVariables({ fresh }) },
         ]),
         buildScope(members, variables),
-        lastFrom, infectionPairs[infectionPairs.length - 1].dir, waveColor, lastInfected
+        lastFrom, infectionPairs[infectionPairs.length - 1].dir, waveColor, lastInfected,
+        [...newlyRotten]
       ));
     } else {
       // 这一波没有任何感染（所有源橘子相邻格子都已腐烂/空）—— 队列会自然耗尽，循环将退出

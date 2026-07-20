@@ -56,6 +56,9 @@ export interface GridState {
   waveColor?: string;
   /** 当前正在检查/感染的目标格子（方向箭头终点），让用户眼睛知道看哪个格子 */
   targetCell?: Cell;
+  /** 即将被感染（本轮新感染）的格子坐标列表。注意：此 step 的 grid 已是 ROTTEN（感染后），
+   *  本字段标记"这些格子刚从 FRESH 变来"，仅用于渲染层做 FRESH↔ROTTEN 闪烁动画，让用户意识到"这些是即将被感染的橘子" */
+  pendingInfect?: Cell[];
   // ===== 新增：Debug 模式数据 =====
   /** 逻辑作用域调用栈帧（方法体 → 循环 → 迭代 → 方向检查 → 感染） */
   callStack?: CallStackFrame[];
