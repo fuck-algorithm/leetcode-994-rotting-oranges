@@ -83,30 +83,55 @@ export function StatePanel({
         <span style={{ fontSize: '10px', color: '#6b7280', marginLeft: 'auto' }}>共{totalCells}</span>
       </div>
 
-      {/* 感染进度 — 单行 */}
+      {/* 感染进度 — 渐变轨道 + 光泽流动，自定义样式不靠原生 progress */}
       <div style={{ marginBottom: '6px' }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '3px',
+          marginBottom: '4px',
         }}>
           <span style={{ fontSize: '11px', color: '#9ca3af' }}>感染进度</span>
-          <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '12px' }}>{progress}%</span>
+          <span style={{
+            color: progress === 100 ? '#22c55e' : '#fbbf24',
+            fontWeight: 'bold',
+            fontSize: '13px',
+            textShadow: progress === 100 ? '0 0 6px rgba(34,197,94,0.6)' : 'none',
+            transition: 'all 0.3s ease',
+          }}>{progress}%</span>
         </div>
         <div style={{
-          height: '6px',
-          background: '#374151',
-          borderRadius: '3px',
+          position: 'relative',
+          height: '8px',
+          background: 'linear-gradient(90deg, #1f2937, #374151)',
+          borderRadius: '4px',
           overflow: 'hidden',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
         }}>
           <div style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
             height: '100%',
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-            borderRadius: '3px',
-            transition: 'width 0.3s ease',
-          }} />
+            background: 'linear-gradient(90deg, #f97316 0%, #f59e0b 50%, #22c55e 100%)',
+            borderRadius: '4px',
+            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 0 6px rgba(251, 191, 36, 0.5)',
+          }}>
+            {/* 光泽流动高光层 */}
+            {progress > 0 && progress < 100 && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '40%',
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
+                animation: 'progressShine 2s ease-in-out infinite',
+              }} />
+            )}
+          </div>
         </div>
       </div>
 

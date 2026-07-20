@@ -185,7 +185,7 @@ export function Controls({
         {currentStep + 1}/{totalSteps}
       </span>
 
-      {/* 进度条 — 占满剩余空间，与按钮同一行 */}
+      {/* 进度条 — 占满剩余空间，与按钮同一行，自定义渐变样式 */}
       <div style={{
         flex: 1,
         minWidth: '120px',
@@ -196,10 +196,11 @@ export function Controls({
         <div style={{
           flex: 1,
           position: 'relative',
-          height: '8px',
-          background: '#4b5563',
-          borderRadius: '4px',
+          height: '10px',
+          background: 'linear-gradient(90deg, #1f2937, #374151)',
+          borderRadius: '5px',
           cursor: 'pointer',
+          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
         }}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -215,9 +216,10 @@ export function Controls({
             top: 0,
             height: '100%',
             width: `${totalSteps > 1 ? (currentStep / (totalSteps - 1)) * 100 : 0}%`,
-            background: '#22c55e',
-            borderRadius: '4px',
-            transition: 'width 0.1s ease',
+            background: 'linear-gradient(90deg, #f97316, #f59e0b, #22c55e)',
+            borderRadius: '5px',
+            transition: 'width 0.15s ease',
+            boxShadow: '0 0 6px rgba(251, 191, 36, 0.4)',
           }} />
           <input
             type="range"
@@ -242,16 +244,22 @@ export function Controls({
             top: '50%',
             left: `${totalSteps > 1 ? (currentStep / (totalSteps - 1)) * 100 : 0}%`,
             transform: 'translate(-50%, -50%)',
-            width: '14px',
-            height: '14px',
-            background: '#22c55e',
+            width: '16px',
+            height: '16px',
+            background: 'radial-gradient(circle at 30% 30%, #fef08a, #facc15 60%, #ca8a04)',
             borderRadius: '50%',
-            border: '2px solid white',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            border: '2px solid rgba(255,255,255,0.9)',
+            animation: 'thumbGlow 1.8s ease-in-out infinite',
             pointerEvents: 'none',
           }} />
         </div>
-        <span style={{ color: '#9ca3af', fontSize: '11px', whiteSpace: 'nowrap' }}>
+        <span style={{
+          color: '#fbbf24',
+          fontSize: '11px',
+          whiteSpace: 'nowrap',
+          fontWeight: 'bold',
+          textShadow: '0 0 4px rgba(251,191,36,0.4)',
+        }}>
           {Math.round(totalSteps > 1 ? (currentStep / (totalSteps - 1)) * 100 : 0)}%
         </span>
       </div>
