@@ -99,7 +99,17 @@ export function GridVisualizer({
       .attr('y', cellSize / 2 + cellSize * 0.14)
       .attr('text-anchor', 'middle')
       .attr('font-size', cellSize * 0.4)
-      .text('🍊');
+      .text('🍊')
+      .style('transform-box', 'fill-box')
+      .style('transform-origin', 'center')
+      .style('animation', d => {
+        // 即将被感染的格子，🍊 图标缩放呼吸，与 rect 的 infectionFlash 叠加，
+        // 让用户从"颜色闪烁 + 图标缩放"双重信号意识到"这些是即将被感染的橘子"
+        if (pendingInfect && pendingInfect.some(c => c.row === d.r && c.col === d.c)) {
+          return 'infectionPulse 0.7s ease-in-out infinite';
+        }
+        return 'none';
+      });
 
     if (showCoordinates) {
       cells.append('text')

@@ -23,10 +23,11 @@ body {
   50% { fill: #b45309; }
 }
 
-/* 感染格子内橘子图标的轻微缩放呼吸，强化"即将变化"的视觉提示 */
+/* 感染格子内橘子图标的缩放呼吸，强化"即将变化"的视觉提示。
+   transform-box: fill-box 让 SVG <text> 绕自身中心缩放，避免位移。 */
 @keyframes infectionPulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  50% { transform: scale(1.25); }
 }
 
 /* 进度条填充光泽流动：一道高光从左向右扫过，避免静态死板 */
