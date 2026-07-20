@@ -87,8 +87,9 @@ export function GridVisualizer({
       .style('animation', d => {
         // 仅 INFECT step 的"即将被感染"格子闪烁；用 CSS animation 而非 d3 transition，
         // 元素随 step 切换全量重绘时一并销毁，无残留定时器。
+        // 周期 0.7s 与 🍊 图标的 infectionPulse 同步，双重视觉信号。
         if (pendingInfect && pendingInfect.some(c => c.row === d.r && c.col === d.c)) {
-          return 'infectionFlash 0.5s ease-in-out infinite';
+          return 'infectionFlash 0.7s ease-in-out infinite';
         }
         return 'none';
       });
