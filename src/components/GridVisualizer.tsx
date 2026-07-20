@@ -26,7 +26,7 @@ export function GridVisualizer({
   showInfectionTime = true,
 }: GridVisualizerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { grid, cellInfoGrid, newlyRotten, currentCell, waveColor, targetCell } = gridState;
+  const { grid, cellInfoGrid, newlyRotten, currentCell, waveColor, targetCell, pendingInfect } = gridState;
 
   useEffect(() => {
     if (!svgRef.current || !grid.length) return;
@@ -82,6 +82,14 @@ export function GridVisualizer({
         if (currentCell && currentCell.row === d.r && currentCell.col === d.c) return 'drop-shadow(0 0 8px #60a5fa)';
         if (isNewlyRotten(d.r, d.c, newlyRotten) && waveColor) return `drop-shadow(0 0 8px ${waveColor})`;
         if (isNewlyRotten(d.r, d.c, newlyRotten)) return 'drop-shadow(0 0 8px #fbbf24)';
+        return 'none';
+      })
+      .style('animation', d => {
+        // 仅 INFECT step 的"即将被感染"格子闪烁；用 CSS animation 而非 d3 transition，
+        // 元素随 step 切换全量重绘时一并销毁，无残留定时器。
+        if (pendingInfect && pendingInfect.some(c => c.row === d.r && c.col === d.c)) {
+          return 'infectionFlash 0.5s ease-in-out infinite';
+        }
         return 'none';
       });
 
@@ -166,7 +174,7 @@ export function GridVisualizer({
         root.attr('transform', event.transform.toString());
       });
     svg.call(zoom);
-  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell]);
+  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell, pendingInfect]);
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

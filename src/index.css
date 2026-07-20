@@ -15,3 +15,16 @@ body {
   background: #1a1a2e;
   color: #eee;
 }
+
+/* 感染闪烁动画：本轮即将被感染的橘子在 FRESH 橙色与 ROTTEN 褐色之间循环切换，
+   让用户意识到"这些是即将被感染的橘子"。周期 0.5s = 2Hz，低于 3Hz 光敏安全阈值。 */
+@keyframes infectionFlash {
+  0%, 100% { fill: #f97316; }
+  50% { fill: #b45309; }
+}
+
+/* 感染格子内橘子图标的轻微缩放呼吸，强化"即将变化"的视觉提示 */
+@keyframes infectionPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
