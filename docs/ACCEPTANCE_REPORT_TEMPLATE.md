@@ -52,7 +52,7 @@
 
 ## 缺陷闭环记录
 
-- **P1：网格地图在播放切步时视觉尺寸变化。** 根因是阶段说明与图例高度随步骤变化，挤压 SVG flex 空间；证据为修复前不同步 SVG 496/512px 高度。修复：将教学区固定为 82px，并让 SVG 在固定容器中使用剩余 flex 空间。复测：示例 1 连续 10 步 SVG viewBox、边界、9 格均恒定；E2E 2/2 通过。修复提交 `a1df2e8`，Pages 部署成功。
+- **P1：网格地图在播放切步时视觉尺寸变化。** 根因是阶段说明与图例高度随步骤变化，挤压 SVG flex 空间；证据为修复前不同步 SVG 496/512px 高度。修复：将步骤说明与图例移入棋盘右侧信息栏，SVG 独占画布卡片高度。复测：示例 1 连续 10 步 SVG viewBox、边界、9 格均恒定；E2E 2/2 通过。修复提交 `a1df2e8`，Pages 部署成功。
 - **CI：GitHub Actions 未安装 Playwright 浏览器导致 E2E 启动失败。** 根因：runner 缺 Chromium。修复：在 E2E 前运行 `npm run test:e2e:install`。后续 Actions run `41086933227` 成功。
 - **剩余缺陷：** B1/B3/B4/B5/B6/B7 未满足，详见 checklist 与 Playwright 矩阵；这不是文档性豁免，当前总验收仍为 FAIL。
 

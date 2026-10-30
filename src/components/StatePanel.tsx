@@ -13,6 +13,7 @@ interface StatePanelProps {
   isComplete: boolean;
   result: number;
   description: string;
+  operation?: string;
 }
 
 export function StatePanel({ 
@@ -26,8 +27,9 @@ export function StatePanel({
   bfsWave = 0,
   phase = AlgorithmPhase.INIT,
   isComplete, 
-  result, 
-  description 
+  result,
+  description,
+  operation = 'read',
 }: StatePanelProps) {
   // 计算感染进度：已感染的橘子数 / 初始新鲜橘子数
   // 在初始化阶段（INIT），进度始终为 0%
@@ -58,7 +60,7 @@ export function StatePanel({
         color: '#e5e7eb',
       }}>
         <div style={{ fontSize: '10px', color: '#60a5fa', marginBottom: '4px', letterSpacing: '0.5px' }}>
-          📖 当前步骤
+          <span className="operation-badge" data-operation={operation}>动作：{operation}</span>
         </div>
         {description}
       </div>
@@ -173,17 +175,6 @@ export function StatePanel({
         </div>
       )}
 
-      {/* 描述 */}
-      <div style={{
-        marginTop: '6px',
-        padding: '6px',
-        background: '#374151',
-        borderRadius: '4px',
-        fontSize: '11px',
-        lineHeight: '1.4',
-      }}>
-        💡 {description}
-      </div>
     </div>
   );
 }

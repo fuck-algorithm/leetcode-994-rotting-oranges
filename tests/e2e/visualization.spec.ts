@@ -30,7 +30,12 @@ test('grid animation keeps stable keyed cells and updates infection narration', 
     expect(await cells.count()).toBe(initialCount);
   }
   await expect(page.getByLabel(/腐烂橘子网格动画/)).toBeVisible();
-  await expect(page.getByLabel('网格图例')).toBeVisible();
+  await expect(page.getByLabel('网格图例与当前步骤解说')).toBeVisible();
+  await expect(page.getByLabel('网格图例', { exact: true })).toBeVisible();
+  const canvas = svg.locator('xpath=ancestor::div[@style and contains(@style, "cursor: grab")]');
+  const legend = page.getByLabel('网格图例', { exact: true });
+  expect(await legend.evaluate(el => el.getBoundingClientRect().left)).toBeGreaterThan(await canvas.evaluate(el => el.getBoundingClientRect().right));
+  await expect(page.locator('.step-narration')).toContainText(/第/);
 });
 
 test('grid animation honors reduced-motion preference and has no purple wave colors', async ({ page }) => {

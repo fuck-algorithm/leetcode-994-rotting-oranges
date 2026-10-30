@@ -117,7 +117,7 @@ function App() {
       {/* Main Content */}
       <main style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 1.6fr) minmax(240px, 0.85fr)',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 1.6fr) minmax(300px, 0.95fr)',
         gap: '6px',
         minHeight: 0,
         overflow: 'hidden',
@@ -179,12 +179,27 @@ function App() {
               isComplete={currentState.phase === AlgorithmPhase.COMPLETE}
               result={result.finalMinutes}
               description={currentState.description}
+              operation={currentState.operation}
             />
           </div>
           <div style={{ overflow: 'auto', minHeight: 0 }}>
-            <QueuePanel 
+            <QueuePanel
               queue={currentState.queue}
             />
+          </div>
+          <div aria-label="网格图例与当前步骤解说" style={{ display: 'grid', alignContent: 'start', gap: 8, padding: 10, minHeight: 0, overflow: 'auto', background: '#1f2937', borderRadius: 8, color: '#d1d5db', fontSize: 11 }}>
+            <div aria-live="polite" style={{ lineHeight: 1.5 }}>
+              <strong className="step-narration" style={{ display: 'block', color: '#fbbf24', marginBottom: 4 }}>第 {currentState.minute} 分钟 · {currentState.phase === AlgorithmPhase.INFECT ? '本轮感染' : currentState.phase === AlgorithmPhase.COMPLETE ? '搜索结束' : 'BFS 扩散'}</strong>
+              <span>{currentState.narration || currentState.description}</span>
+            </div>
+            <div aria-label="网格图例" style={{ display: 'grid', gap: 6, borderTop: '1px solid #374151', paddingTop: 8 }}>
+              <strong style={{ color: '#9ca3af' }}>网格图例</strong>
+              <span>⬛ 空格：不可传播</span>
+              <span>🍊 新鲜：等待感染</span>
+              <span>🟤 腐烂：可向四邻扩散</span>
+              <span>发光边框：当前源 / 本轮新感染</span>
+              <span>tN：第 N 分钟感染</span>
+            </div>
           </div>
         </div>
       </main>

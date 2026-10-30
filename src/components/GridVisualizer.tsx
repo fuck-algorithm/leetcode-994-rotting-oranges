@@ -227,28 +227,9 @@ export function GridVisualizer({
     };
   }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell, pendingInfect, checkingDirection, phase]);
 
-  const phaseHint = gridState.phase === 'infect'
-    ? `本轮新增 ${gridState.infectedThisMinute} 个腐烂橘子；它们将在下一分钟继续扩散。`
-    : gridState.phase === 'bfs_loop'
-      ? `队列中的橘子按先进先出处理；同一轮开始时的橘子属于同一分钟。`
-      : gridState.phase === 'complete'
-        ? (gridState.freshCount === 0 ? `全部橘子已感染，共用时 ${gridState.minute} 分钟。` : `队列已空，仍有 ${gridState.freshCount} 个新鲜橘子无法到达。`)
-        : '先扫描网格：把所有初始腐烂橘子加入队列，作为第 0 分钟的扩散源。';
-
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-      <svg ref={svgRef} role="img" aria-label={`腐烂橘子网格动画，第 ${gridState.minute} 分钟`} style={{ width: '100%', height: 0, minHeight: 0, flex: '1 1 0' }} />
-      <div style={{ width: 'min(100%, 620px)', height: 82, flex: '0 0 82px', overflow: 'hidden', display: 'grid', alignContent: 'start', gap: 5, fontSize: 11, color: '#d1d5db' }}>
-        <div aria-live="polite" style={{ padding: '6px 10px', borderRadius: 6, background: '#1f2937', borderLeft: `3px solid ${gridState.waveColor || '#f59e0b'}` }}>
-          <strong style={{ color: '#fbbf24' }}>第 {gridState.minute} 分钟 · {gridState.phase === 'infect' ? '本轮感染' : gridState.phase === 'complete' ? '搜索结束' : 'BFS 扩散'}</strong>
-          <span className="operation-badge" data-operation={gridState.operation} style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 10, background: '#334155', color: '#e2e8f0', fontSize: 10 }}>{gridState.operation}</span>
-          <span className="step-narration" style={{ display: 'block', marginTop: 4 }}>{gridState.narration || phaseHint}</span>
-        </div>
-        <div aria-label="网格图例" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', color: '#9ca3af' }}>
-          <span>⬛ 空格：不可传播</span><span>🍊 新鲜：等待感染</span><span>🟤 腐烂：可向四邻扩散</span>
-          <span>发光边框：当前源 / 本轮新感染</span><span>tN：第 N 分钟感染</span>
-        </div>
-      </div>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <svg ref={svgRef} role="img" aria-label={`腐烂橘子网格动画，第 ${gridState.minute} 分钟`} style={{ width: '100%', height: '100%', minHeight: 0 }} />
     </div>
   );
 }
