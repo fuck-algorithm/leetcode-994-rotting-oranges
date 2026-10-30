@@ -6,9 +6,10 @@ test('grid animation keeps stable keyed cells and updates infection narration', 
   const svg = page.locator('svg[role="img"]');
   await expect(svg).toBeVisible();
 
+  await page.getByRole('button', { name: /示例 1/ }).click();
   const cells = page.locator('.grid-cell');
+  await expect(cells).toHaveCount(9);
   const initialCount = await cells.count();
-  expect(initialCount).toBeGreaterThan(0);
   const stableNode = page.locator('[data-cell-id="0-0"]');
   await stableNode.evaluate(node => { (window as typeof window & { __cellBeforeStep?: Element }).__cellBeforeStep = node; });
   expect(await stableNode.getAttribute('data-cell-id')).toBe('0-0');
@@ -19,11 +20,14 @@ test('grid animation keeps stable keyed cells and updates infection narration', 
   expect(sameDomNode).toBe(true);
   expect(await cells.count()).toBe(initialCount);
 
-  const next = page.getByRole('button', { name: '→' });
-  for (let i = 0; i < 20; i++) {
-    if (!(await next.isEnabled())) break;
-    await next.click();
+  const dimensions = await page.locator('svg[role="img"]').getAttribute('viewBox');
+  const svgBounds = await page.locator('svg[role="img"]').evaluate(svg => svg.getBoundingClientRect().toJSON());
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press('ArrowRight');
     await expect(page.locator('[aria-live="polite"]')).toBeVisible();
+    expect(await page.locator('svg[role="img"]').getAttribute('viewBox')).toBe(dimensions);
+    expect(await page.locator('svg[role="img"]').evaluate(svg => svg.getBoundingClientRect().toJSON())).toEqual(svgBounds);
+    expect(await cells.count()).toBe(initialCount);
   }
   await expect(page.getByLabel(/腐烂橘子网格动画/)).toBeVisible();
   await expect(page.getByLabel('网格图例')).toBeVisible();

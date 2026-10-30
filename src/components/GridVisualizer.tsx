@@ -236,9 +236,9 @@ export function GridVisualizer({
         : '先扫描网格：把所有初始腐烂橘子加入队列，作为第 0 分钟的扩散源。';
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-      <svg ref={svgRef} role="img" aria-label={`腐烂橘子网格动画，第 ${gridState.minute} 分钟`} style={{ maxWidth: '100%', maxHeight: 'calc(100% - 58px)' }} />
-      <div style={{ width: 'min(100%, 620px)', display: 'grid', gap: 5, fontSize: 11, color: '#d1d5db' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+      <svg ref={svgRef} role="img" aria-label={`腐烂橘子网格动画，第 ${gridState.minute} 分钟`} style={{ width: '100%', height: 0, minHeight: 0, flex: '1 1 0' }} />
+      <div style={{ width: 'min(100%, 620px)', height: 82, flex: '0 0 82px', overflow: 'hidden', display: 'grid', alignContent: 'start', gap: 5, fontSize: 11, color: '#d1d5db' }}>
         <div aria-live="polite" style={{ padding: '6px 10px', borderRadius: 6, background: '#1f2937', borderLeft: `3px solid ${gridState.waveColor || '#f59e0b'}` }}>
           <strong style={{ color: '#fbbf24' }}>第 {gridState.minute} 分钟 · {gridState.phase === 'infect' ? '本轮感染' : gridState.phase === 'complete' ? '搜索结束' : 'BFS 扩散'}</strong>
           <span className="operation-badge" data-operation={gridState.operation} style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 10, background: '#334155', color: '#e2e8f0', fontSize: 10 }}>{gridState.operation}</span>
