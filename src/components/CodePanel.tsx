@@ -61,7 +61,7 @@ const lines = JAVA_CODE.split('\n');
 
 // 语法高亮的颜色配置 (VS Code Dark+ 主题风格)
 const COLORS = {
-  keyword: '#c586c0',      // 紫色 - class, public, int, for, while, if, else, return, new
+  keyword: '#d7ba7d',      // 金色 - class, public, int, for, while, if, else, return, new
   type: '#4ec9b0',         // 青色 - Queue, LinkedList, Solution
   number: '#b5cea8',       // 浅绿色 - 数字
   string: '#ce9178',       // 橙色 - 字符串

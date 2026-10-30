@@ -35,8 +35,14 @@ jobs:
       - name: Run linter
         run: npm run lint
 
-      - name: Run tests
-        run: npm test -- --run
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run coverage
+        run: npm run test:coverage
+
+      - name: Run browser tests
+        run: npm run test:e2e
 
       - name: Build
         run: npm run build

@@ -178,6 +178,9 @@ function createStep(
     waveColor,
     targetCell,
     pendingInfect: pendingInfect ? pendingInfect.map(c => ({ ...c })) : undefined,
+    operation: phase === AlgorithmPhase.INIT ? 'init' : phase === AlgorithmPhase.INFECT ? 'visit' : phase === AlgorithmPhase.COMPLETE ? 'done' : 'read',
+    narration: description,
+    anchorIds: highlightedLines.map(line => `line-${line}`),
   };
 }
 
@@ -185,10 +188,10 @@ function createStep(
 const WAVE_COLORS = [
   '#fbbf24', // 黄
   '#60a5fa', // 蓝
-  '#a78bfa', // 紫
   '#34d399', // 绿
-  '#f472b6', // 粉
   '#fb7185', // 红
+  '#f97316', // 橙
+  '#22c55e', // 绿
 ];
 
 /** 给定分钟数返回该波次的色相（循环复用） */

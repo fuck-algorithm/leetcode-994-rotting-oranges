@@ -23,7 +23,7 @@
 **Files:**
 - Modify: `.github/workflows/deploy.yml`（整体替换 jobs.steps 区块 + setup-node node-version）
 
-- [ ] **Step 1: 替换 build job 全部 steps — 升级 checkout/setup-node 并锁 Node 24**
+- [x] **Step 1: 替换 build job 全部 steps — 升级 checkout/setup-node 并锁 Node 24**
 文件: `.github/workflows/deploy.yml:20-50`（替换整个 `build:` job 的 `steps:` 列表）
 
 ```yaml
@@ -66,7 +66,7 @@
 - `node-version: '20' → '24'`：Node 24 为当前活跃 LTS，且 actions 生态已统一 Node 24 运行时，从源头消除 Node 20 弃用 warning
 - `deploy` job 在下一步单独升级，保持 build/deploy 两个 step 块各自独立便于回退
 
-- [ ] **Step 2: 替换 deploy job step — 升级 deploy-pages 到 v5 消除 warning 根因**
+- [x] **Step 2: 替换 deploy job step — 升级 deploy-pages 到 v5 消除 warning 根因**
 文件: `.github/workflows/deploy.yml:52-62`（替换 `deploy:` job 的 `steps:` 区块）
 
 ```yaml
@@ -87,33 +87,33 @@
 - `deploy-pages@v4 → v5`：v5 的 release notes 明确 "Update Node.js version to 24.x"，这正是当前 warning 指名的 action，升级后该 deprecation warning 消失
 - 其余字段（environment/url/needs/id）全部保持不变，仅升 action 版本号
 
-- [ ] **Step 3: 校验 YAML 语法合法 — 确保升级后文件可解析**
+- [x] **Step 3: 校验 YAML 语法合法 — 确保升级后文件可解析**
 Run: `python3 -c "import yaml,sys; d=yaml.safe_load(open('.github/workflows/deploy.yml')); assert 'build' in d['jobs'] and 'deploy' in d['jobs']; print('YAML valid, jobs:', list(d['jobs']))"`
 Expected:
   - Exit code: 0
   - Output contains: "YAML valid, jobs: ['build', 'deploy']"
 
-- [ ] **Step 4: 校验版本号已全部升级 — 确认无残留旧主版本**
+- [x] **Step 4: 校验版本号已全部升级 — 确认无残留旧主版本**
 Run: `grep -nE 'uses: actions/(checkout|setup-node|configure-pages|upload-pages-artifact|deploy-pages)@' .github/workflows/deploy.yml`
 Expected:
   - Exit code: 0
   - Output contains: "checkout@v7" and "setup-node@v7" and "configure-pages@v6" and "upload-pages-artifact@v5" and "deploy-pages@v5"
   - Output does NOT contain: "@v3" or "@v4"
 
-- [ ] **Step 5: 本地在 Node 24 下跑完整构建链 — 确认 Node 升级不破坏构建**
+- [x] **Step 5: 本地在 Node 24 下跑完整构建链 — 确认 Node 升级不破坏构建**
 Run: `npm ci && npm run lint && npm test -- --run && npm run build`
 Expected:
   - Exit code: 0
   - Output contains: "vite v" and "built in"
   - Output does NOT contain: "ERR!" or "FAIL" or "error TS"
 
-- [ ] **Step 6: 提交并推送 — 触发升级后的首次部署 run**
+- [x] **Step 6: 提交并推送 — 触发升级后的首次部署 run**
 Run: `git add .github/workflows/deploy.yml && git commit -m "ci: bump github actions to node24 runtimes (checkout v7, setup-node v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5) and pin node to 24 lts" && git push`
 Expected:
   - Exit code: 0
   - Output contains: "To github.com"
 
-- [ ] **Step 7: 观察首次 run 结果 — 确认升级后部署仍成功且 warning 消失**
+- [x] **Step 7: 观察首次 run 结果 — 确认升级后部署仍成功且 warning 消失**
 Run: `sleep 15 && gh run list --workflow=deploy.yml --limit 1 --json status,conclusion,headBranch,event`
 Expected:
   - Exit code: 0

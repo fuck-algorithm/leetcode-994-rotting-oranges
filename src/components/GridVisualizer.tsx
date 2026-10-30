@@ -26,7 +26,7 @@ export function GridVisualizer({
   showInfectionTime = true,
 }: GridVisualizerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { grid, cellInfoGrid, newlyRotten, currentCell, waveColor, targetCell, pendingInfect } = gridState;
+  const { grid, cellInfoGrid, newlyRotten, currentCell, waveColor, targetCell, pendingInfect, checkingDirection, phase } = gridState;
 
   useEffect(() => {
     if (!svgRef.current || !grid.length) return;
@@ -43,25 +43,45 @@ export function GridVisualizer({
       .attr('preserveAspectRatio', 'xMidYMid meet')
       .attr('width', '100%')
       .attr('height', '100%');
-    svg.selectAll('*').remove();
-
-    // 根容器 <g>：所有单元格挂在此，zoom 作用于它
-    const root = svg.append('g');
+    // 根容器只创建一次；按坐标稳定复用单元格，切步时不重建整张画布。
+    const root = svg.selectAll<SVGGElement, null>('.grid-root')
+      .data([null])
+      .join('g')
+      .attr('class', 'grid-root');
 
     const cellData = grid.flatMap((row, r) =>
       row.map((state, c) => {
         const info = cellInfoGrid?.[r]?.[c];
-        return { r, c, state, infectionTime: info?.infectionTime };
+        return { id: `${r}-${c}`, r, c, state, infectionTime: info?.infectionTime };
       })
     );
 
-    const cells = root.selectAll('g')
-      .data(cellData)
-      .enter()
-      .append('g')
-      .attr('transform', d => `translate(${d.c * (cellSize + gap)}, ${d.r * (cellSize + gap)})`);
+    const existingCells = root.selectAll<SVGGElement, typeof cellData[number]>('g.grid-cell');
+    existingCells.interrupt('cell-enter').interrupt('cell-exit');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const enterDuration = reducedMotion ? 0 : 160;
+    const exitDuration = reducedMotion ? 0 : 120;
+    const cellJoin = existingCells
+      .data(cellData, d => d.id)
+      .join(
+        enter => {
+          const cell = enter.append('g').attr('class', 'grid-cell').attr('opacity', 0);
+          cell.append('rect');
+          cell.append('text').attr('class', 'orange-icon');
+          cell.append('text').attr('class', 'coordinates');
+          cell.append('text').attr('class', 'infection-time');
+          return cell;
+        },
+        update => update,
+        exit => exit.transition('cell-exit').duration(exitDuration).attr('opacity', 0).on('end', function () { d3.select(this).remove(); })
+      )
+      .attr('data-cell-id', d => d.id)
+      .attr('transform', d => `translate(${d.c * (cellSize + gap)}, ${d.r * (cellSize + gap)})`)
+      .transition('cell-enter').duration(enterDuration).attr('opacity', 1)
+      .on('end', function () { d3.select(this).attr('data-entering', null); });
 
-    cells.append('rect')
+    const cells = cellJoin.selection();
+    cells.select('rect')
       .attr('width', cellSize)
       .attr('height', cellSize)
       .attr('rx', Math.max(4, cellSize * 0.12))
@@ -94,8 +114,8 @@ export function GridVisualizer({
         return 'none';
       });
 
-    cells.filter(d => d.state !== CellState.EMPTY)
-      .append('text')
+    cells.select<SVGTextElement>('.orange-icon')
+      .style('display', d => d.state === CellState.EMPTY ? 'none' : '')
       .attr('x', cellSize / 2)
       .attr('y', cellSize / 2 + cellSize * 0.14)
       .attr('text-anchor', 'middle')
@@ -112,36 +132,24 @@ export function GridVisualizer({
         return 'none';
       });
 
-    if (showCoordinates) {
-      cells.append('text')
-        .attr('x', 4)
-        .attr('y', 11)
-        .attr('font-size', Math.max(7, cellSize * 0.14))
-        .attr('fill', '#9ca3af')
-        .attr('font-family', 'monospace')
-        .text(d => `${d.r},${d.c}`);
-    }
+    cells.select<SVGTextElement>('.coordinates')
+      .style('display', showCoordinates ? '' : 'none')
+      .attr('x', 4)
+      .attr('y', 11)
+      .attr('font-size', Math.max(7, cellSize * 0.14))
+      .attr('fill', '#9ca3af')
+      .attr('font-family', 'monospace')
+      .text(d => `${d.r},${d.c}`);
 
-    if (showInfectionTime) {
-      cells.filter(d => d.state === CellState.ROTTEN && d.infectionTime !== undefined && d.infectionTime > 0)
-        .append('text')
-        .attr('x', cellSize - 4)
-        .attr('y', cellSize - 4)
-        .attr('text-anchor', 'end')
-        .attr('font-size', Math.max(8, cellSize * 0.15))
-        .attr('font-weight', 'bold')
-        .attr('fill', '#fbbf24')
-        .text(d => `t${d.infectionTime}`);
-    }
-
-    cells.filter(d => d.state === CellState.ROTTEN && (d.infectionTime === 0 || d.infectionTime === undefined))
-      .append('text')
+    cells.select<SVGTextElement>('.infection-time')
+      .style('display', d => showInfectionTime && d.state === CellState.ROTTEN ? '' : 'none')
       .attr('x', cellSize - 4)
-        .attr('y', cellSize - 4)
-        .attr('text-anchor', 'end')
-        .attr('font-size', Math.max(7, cellSize * 0.13))
-        .attr('fill', '#ef4444')
-        .text('初始');
+      .attr('y', cellSize - 4)
+      .attr('text-anchor', 'end')
+      .attr('font-size', Math.max(7, cellSize * 0.15))
+      .attr('font-weight', 'bold')
+      .attr('fill', d => d.infectionTime && d.infectionTime > 0 ? '#fbbf24' : '#ef4444')
+      .text(d => d.infectionTime && d.infectionTime > 0 ? `t${d.infectionTime}` : '初始');
 
     // 方向箭头：从当前源格子指向正在感染的目标格子，让用户看清"从哪感染到哪"
     if (currentCell && targetCell) {
@@ -158,17 +166,23 @@ export function GridVisualizer({
       const x2 = tx - ux * (cellSize * 0.35);
       const y2 = ty - uy * (cellSize * 0.35);
       const arrowColor = waveColor || '#fbbf24';
-      const defs = root.append('defs');
-      const marker = defs.append('marker')
-        .attr('id', 'dir-arrow')
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', 8).attr('refY', 0)
-        .attr('markerWidth', 6).attr('markerHeight', 6)
-        .attr('orient', 'auto');
-      marker.append('path')
-        .attr('d', 'M0,-5L10,0L0,5')
-        .attr('fill', arrowColor);
-      root.append('line')
+      const arrowOverlay = root.selectAll<SVGGElement, number>('.direction-overlay')
+        .data([0])
+        .join(enter => {
+          const group = enter.append('g').attr('class', 'direction-overlay');
+          group.append('defs').append('marker')
+            .attr('id', 'dir-arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 8).attr('refY', 0)
+            .attr('markerWidth', 6).attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path').attr('d', 'M0,-5L10,0L0,5');
+          group.append('line');
+          group.append('text');
+          return group;
+        });
+      arrowOverlay.select('marker path').attr('fill', arrowColor);
+      arrowOverlay.select('line')
         .attr('x1', x1).attr('y1', y1)
         .attr('x2', x2).attr('y2', y2)
         .attr('stroke', arrowColor)
@@ -176,6 +190,28 @@ export function GridVisualizer({
         .attr('stroke-linecap', 'round')
         .attr('marker-end', 'url(#dir-arrow)')
         .style('filter', `drop-shadow(0 0 4px ${arrowColor})`);
+
+      const directionNames = { up: '向上', down: '向下', left: '向左', right: '向右' };
+      const arrowLabel = phase === 'infect'
+        ? `${directionNames[checkingDirection || 'right']}感染 [${targetCell.row},${targetCell.col}]`
+        : `从 [${currentCell.row},${currentCell.col}] 检查邻格`;
+      arrowOverlay.select('text')
+        .style('display', '')
+        .attr('x', (cx + tx) / 2)
+        .attr('y', (cy + ty) / 2 - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', Math.max(10, cellSize * 0.18))
+        .attr('font-weight', 'bold')
+        .attr('fill', '#fff')
+        .attr('stroke', '#111827')
+        .attr('stroke-width', 3)
+        .attr('paint-order', 'stroke')
+        .text(arrowLabel);
+    }
+
+    if (!currentCell || !targetCell) {
+      root.select('.direction-overlay').select('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 0);
+      root.select('.direction-overlay').select('text').style('display', 'none');
     }
 
     // d3.zoom：滚轮缩放 + 拖拽平移，作用于 root <g>
@@ -185,11 +221,34 @@ export function GridVisualizer({
         root.attr('transform', event.transform.toString());
       });
     svg.call(zoom);
-  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell, pendingInfect]);
+    return () => {
+      svg.on('.zoom', null);
+      root.selectAll('*').interrupt();
+    };
+  }, [grid, cellInfoGrid, newlyRotten, currentCell, cellSize, showCoordinates, showInfectionTime, waveColor, targetCell, pendingInfect, checkingDirection, phase]);
+
+  const phaseHint = gridState.phase === 'infect'
+    ? `本轮新增 ${gridState.infectedThisMinute} 个腐烂橘子；它们将在下一分钟继续扩散。`
+    : gridState.phase === 'bfs_loop'
+      ? `队列中的橘子按先进先出处理；同一轮开始时的橘子属于同一分钟。`
+      : gridState.phase === 'complete'
+        ? (gridState.freshCount === 0 ? `全部橘子已感染，共用时 ${gridState.minute} 分钟。` : `队列已空，仍有 ${gridState.freshCount} 个新鲜橘子无法到达。`)
+        : '先扫描网格：把所有初始腐烂橘子加入队列，作为第 0 分钟的扩散源。';
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <svg ref={svgRef} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+      <svg ref={svgRef} role="img" aria-label={`腐烂橘子网格动画，第 ${gridState.minute} 分钟`} style={{ maxWidth: '100%', maxHeight: 'calc(100% - 58px)' }} />
+      <div style={{ width: 'min(100%, 620px)', display: 'grid', gap: 5, fontSize: 11, color: '#d1d5db' }}>
+        <div aria-live="polite" style={{ padding: '6px 10px', borderRadius: 6, background: '#1f2937', borderLeft: `3px solid ${gridState.waveColor || '#f59e0b'}` }}>
+          <strong style={{ color: '#fbbf24' }}>第 {gridState.minute} 分钟 · {gridState.phase === 'infect' ? '本轮感染' : gridState.phase === 'complete' ? '搜索结束' : 'BFS 扩散'}</strong>
+          <span className="operation-badge" data-operation={gridState.operation} style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 10, background: '#334155', color: '#e2e8f0', fontSize: 10 }}>{gridState.operation}</span>
+          <span className="step-narration" style={{ display: 'block', marginTop: 4 }}>{gridState.narration || phaseHint}</span>
+        </div>
+        <div aria-label="网格图例" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', color: '#9ca3af' }}>
+          <span>⬛ 空格：不可传播</span><span>🍊 新鲜：等待感染</span><span>🟤 腐烂：可向四邻扩散</span>
+          <span>发光边框：当前源 / 本轮新感染</span><span>tN：第 N 分钟感染</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -102,7 +102,7 @@ function App() {
     <div style={{
       height: '100vh',
       display: 'grid',
-      gridTemplateRows: 'auto auto 1fr auto',
+      gridTemplateRows: 'auto auto minmax(0, 1fr) auto',
       gap: '6px',
       padding: '6px',
       background: '#1a1a2e',
@@ -117,7 +117,7 @@ function App() {
       {/* Main Content */}
       <main style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1.6fr 0.85fr',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 1.6fr) minmax(240px, 0.85fr)',
         gap: '6px',
         minHeight: 0,
         overflow: 'hidden',

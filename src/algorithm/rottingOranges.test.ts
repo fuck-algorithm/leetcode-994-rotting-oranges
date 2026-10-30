@@ -233,6 +233,16 @@ describe('演示可读性：step 粒度合理性', () => {
     expect(result.steps.length).toBeLessThan(50);
   });
 
+  it('每个动画快照有语义操作、解说和有效代码锚点', () => {
+    const result = generateSteps([[2, 1, 1], [1, 1, 0], [0, 1, 1]]);
+    for (const step of result.steps) {
+      expect(step.operation).toBeTruthy();
+      expect(step.narration).toBe(step.description);
+      expect(step.anchorIds?.length).toBeGreaterThan(0);
+      expect(step.anchorIds?.every(anchor => /^line-\d+$/.test(anchor))).toBe(true);
+    }
+  });
+
   it('description 是叙事句（含中文标点或箭头，非纯代码行）', () => {
     const grid: CellState[][] = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
     const result = generateSteps(grid);
