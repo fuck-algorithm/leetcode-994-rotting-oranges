@@ -41,6 +41,9 @@ jobs:
       - name: Run coverage
         run: npm run test:coverage
 
+      - name: Install Playwright browser
+        run: npm run test:e2e:install
+
       - name: Run browser tests
         run: npm run test:e2e
 
